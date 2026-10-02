@@ -1,0 +1,33 @@
+{
+  "name": "@samadhan/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "migrate": "drizzle-kit migrate",
+    "generate": "drizzle-kit generate",
+    "seed": "tsx src/seed/index.ts",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@samadhan/domain": "workspace:*",
+    "drizzle-orm": "^0.44.0",
+    "postgres": "^3.4.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.0",
+    "vitest": "^3.2.0",
+    "typescript": "^5.8.0",
+    "tsx": "^4.19.0"
+  }
+}
