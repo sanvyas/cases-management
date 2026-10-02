@@ -15,16 +15,14 @@ import { DetailPage } from './pages/DetailPage';
 import { LangPickerPage } from './pages/LangPickerPage';
 import './index.css';
 
-/* ─── Layout ─── */
 function CitizenLayout() {
   return (
-    <div className="mx-auto min-h-screen max-w-lg bg-white">
+    <div className="mx-auto min-h-dvh max-w-md bg-cream" style={{ fontFamily: "'Mukta', sans-serif" }}>
       <Outlet />
     </div>
   );
 }
 
-/* ─── Routes ─── */
 const rootRoute = createRootRoute({ component: CitizenLayout });
 
 const langPickerRoute = createRoute({
@@ -43,6 +41,9 @@ const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/register',
   component: RegisterPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    category: (search.category as string) || undefined,
+  }),
 });
 
 const trackRoute = createRoute({

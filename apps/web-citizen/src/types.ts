@@ -1,51 +1,43 @@
-export type ComplaintStatus =
-  | 'RECEIVED'
-  | 'ASSIGNED'
-  | 'IN_PROGRESS'
-  | 'RESOLVED'
-  | 'CLOSED'
-  | 'REOPENED';
+export type Lang = 'en' | 'hi';
 
-export interface LocalizedString {
-  en: string;
+export interface SubType {
+  id: string;
   hi: string;
+  en: string;
+  icon: string;
+  sla: string;
+  slaEn: string;
 }
 
 export interface Category {
   id: string;
+  hi: string;
+  en: string;
   icon: string;
-  name: LocalizedString;
+  bg: string;
+  fg: string;
+  subs: SubType[];
 }
 
-export interface SubType {
+export interface LocationNode {
   id: string;
-  categoryId: string;
-  name: LocalizedString;
+  hi: string;
+  en: string;
+  landmark: string;
 }
 
-export interface TimelineEntry {
-  id: string;
-  date: string;
-  title: LocalizedString;
-  description: LocalizedString;
-}
+export type ComplaintStep = 0 | 1 | 2 | 3;
 
-export interface Officer {
-  name: string;
-  phone: string;
-}
-
-export interface Complaint {
+export interface MockComplaint {
   id: string;
   caseNumber: string;
-  categoryId: string;
-  subTypeId: string;
-  status: ComplaintStatus;
-  location: LocalizedString;
-  description: LocalizedString;
-  dateCreated: string;
-  officer?: Officer;
-  timeline: TimelineEntry[];
+  catIndex: number;
+  subIndex: number;
+  locIndex: number;
+  date: string;
+  step: ComplaintStep;
+  times: string[];
+  workerName: string;
+  workerRole: string;
+  dueText: string;
 }
-
-export type Lang = 'en' | 'hi';

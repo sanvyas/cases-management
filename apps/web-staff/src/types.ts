@@ -1,3 +1,5 @@
+export type StaffRole = 'officer' | 'field_worker';
+
 export type CaseStatus =
   | 'REGISTERED'
   | 'ASSIGNED'
@@ -33,6 +35,9 @@ export interface Case {
   slaDueAt: string;
   resolvedAt: string | null;
   description: string;
+  icon: string;
+  iconBg: string;
+  iconFg: string;
 }
 
 export interface TimelineEntry {
@@ -42,6 +47,7 @@ export interface TimelineEntry {
   actor: string;
   actorRole: string;
   details: string;
+  icon: string;
 }
 
 export interface DashboardKPI {
@@ -49,11 +55,14 @@ export interface DashboardKPI {
   value: string | number;
   change?: string;
   trend?: 'up' | 'down' | 'neutral';
-  color: 'green' | 'red' | 'blue' | 'amber' | 'slate';
+  icon: string;
+  bg: string;
+  fg: string;
 }
 
 export interface DepartmentSummary {
   department: string;
+  icon: string;
   total: number;
   open: number;
   overdue: number;
@@ -65,16 +74,9 @@ export interface User {
   id: string;
   name: string;
   phone: string;
-  role: string;
+  role: StaffRole;
+  roleLabel: string;
   tenantId: string;
   tenantName: string;
   permissions: string[];
-}
-
-export interface Attachment {
-  id: string;
-  filename: string;
-  type: 'image' | 'document';
-  url: string;
-  uploadedAt: string;
 }

@@ -1,87 +1,156 @@
 import { Link } from '@tanstack/react-router';
 import { useLang } from '../lang';
-import { categories } from '../data/mockData';
+import { categories, mockComplaints, locations, STATUS_STYLES } from '../data/mockData';
 
 export function HomePage() {
-  const { language, t } = useLang();
+  const { t } = useLang();
+  const latest = mockComplaints[0];
+  const latestCat = latest ? categories[latest.catIndex] : null;
+  const latestSub = latestCat && latest ? latestCat.subs[latest.subIndex] : null;
+  const latestLoc = latest ? locations[latest.locIndex] : null;
+  const latestStatus = latest ? STATUS_STYLES[latest.step] : null;
+  const previewCats = categories.slice(0, 5);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Header */}
-      <header className="bg-blue-700 px-4 py-5 text-white">
-        <h1 className="text-xl font-bold">{t('app.title')}</h1>
-        <p className="text-sm text-blue-200">{t('app.subtitle')}</p>
-      </header>
-
-      <div className="flex-1 px-4 py-6 space-y-6">
-        {/* Voice CTA */}
-        <button className="w-full rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-6 text-center text-white shadow-lg">
-          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/20">
-            <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
-            </svg>
-          </div>
-          <p className="text-lg font-semibold">{t('home.speak')}</p>
-        </button>
-
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-gray-200" />
-          <span className="text-sm text-gray-400">{t('home.or')}</span>
-          <div className="h-px flex-1 bg-gray-200" />
+    <div className="flex min-h-dvh flex-col bg-cream">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2">
+        {/* Header */}
+        <div className="mb-5">
+          <h1 className="text-3xl font-extrabold leading-tight text-dark">{t('app.title')}</h1>
+          <p className="text-sm text-dark-muted">{t('app.subtitle')}</p>
         </div>
 
-        {/* Categories */}
-        <div>
-          <h2 className="mb-3 text-sm font-semibold text-gray-700">{t('home.categories')}</h2>
-          <div className="grid grid-cols-3 gap-3">
-            {categories.map((cat) => (
+        {/* Two big choice buttons */}
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <Link
+            to="/register"
+            search={{ category: '__voice__' }}
+            className="flex flex-col items-center justify-center gap-2 rounded-3xl bg-primary p-5 text-white text-center"
+            style={{ minHeight: 140 }}
+          >
+            <span className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+              <span className="material-symbols-rounded text-4xl">mic</span>
+            </span>
+            <div>
+              <div className="text-lg font-bold leading-tight">{t('home.voice')}</div>
+              <div className="text-xs opacity-80">{t('home.voiceSub')}</div>
+            </div>
+          </Link>
+
+          <Link
+            to="/register"
+            search={{ category: undefined }}
+            className="flex flex-col items-center justify-center gap-2 rounded-3xl bg-white p-5 text-dark text-center"
+            style={{ minHeight: 140, boxShadow: '0 1px 0 #EADFD2' }}
+          >
+            <span className="w-16 h-16 rounded-full bg-cream-dark flex items-center justify-center">
+              <span className="material-symbols-rounded text-4xl text-primary">grid_view</span>
+            </span>
+            <div>
+              <div className="text-lg font-bold leading-tight">{t('home.pick')}</div>
+              <div className="text-xs text-dark-muted">{t('home.pickSub')}</div>
+            </div>
+          </Link>
+        </div>
+
+        {/* Quick categories preview */}
+        <div className="mb-5">
+          <div className="flex overflow-x-auto gap-3 pb-2" style={{ scrollbarWidth: 'none' }}>
+            {previewCats.map((cat, i) => (
               <Link
                 key={cat.id}
                 to="/register"
-                search={{ category: cat.id }}
-                className="flex flex-col items-center rounded-xl border border-gray-200 bg-white px-2 py-4 text-center shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50"
+                search={{ category: String(i) }}
+                className="flex flex-col items-center gap-2 flex-none"
+                style={{ width: 80 }}
               >
-                <span className="text-2xl">{cat.icon}</span>
-                <span className="mt-2 text-xs font-medium text-gray-700">
-                  {cat.name[language]}
+                <span
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                  style={{ background: cat.bg }}
+                >
+                  <span className="material-symbols-rounded text-3xl" style={{ color: cat.fg }}>
+                    {cat.icon}
+                  </span>
                 </span>
+                <span className="text-xs font-bold text-dark text-center leading-tight">{cat.hi}</span>
               </Link>
             ))}
+            <Link
+              to="/register"
+              search={{ category: undefined }}
+              className="flex flex-col items-center gap-2 flex-none"
+              style={{ width: 80 }}
+            >
+              <span className="w-16 h-16 rounded-2xl flex items-center justify-center bg-cream-dark">
+                <span className="material-symbols-rounded text-3xl text-dark-muted">apps</span>
+              </span>
+              <span className="text-xs font-bold text-dark text-center leading-tight">{t('home.seeAll')}</span>
+            </Link>
           </div>
         </div>
+
+        {/* Latest complaint card */}
+        {latest && latestCat && latestSub && latestLoc && latestStatus && (
+          <Link
+            to="/complaint/$id"
+            params={{ id: latest.id }}
+            className="block rounded-3xl bg-white p-4 mb-3"
+            style={{ boxShadow: '0 1px 0 #EADFD2' }}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <span
+                className="w-12 h-12 rounded-2xl flex items-center justify-center flex-none"
+                style={{ background: latestCat.bg }}
+              >
+                <span className="material-symbols-rounded text-2xl" style={{ color: latestCat.fg }}>
+                  {latestSub.icon}
+                </span>
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-lg font-bold leading-tight text-dark">{latestSub.hi}</div>
+                <div className="text-xs text-dark-muted">{latest.caseNumber} · {latest.date} · {latestLoc.hi}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="flex-1 flex items-center gap-2 h-10 px-3 rounded-xl text-sm font-bold"
+                style={{ background: latestStatus.bg, color: latestStatus.fg }}
+              >
+                <span className="material-symbols-rounded text-xl">{latestStatus.icon}</span>
+                {latestStatus.hi}
+                <span className="text-xs font-semibold ml-1">· {latestStatus.en}</span>
+              </span>
+            </div>
+          </Link>
+        )}
       </div>
 
       {/* Bottom Nav */}
-      <nav className="sticky bottom-0 flex border-t border-gray-200 bg-white">
-        <Link
-          to="/home"
-          className="flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium text-blue-700"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-          </svg>
-          Home
-        </Link>
-        <Link
-          to="/track"
-          className="flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium text-gray-500 hover:text-blue-700"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 0z" />
-          </svg>
-          {t('home.track')}
-        </Link>
-        <Link
-          to="/register"
-          className="flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium text-gray-500 hover:text-blue-700"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          {t('register.title')}
-        </Link>
+      <nav className="flex-none h-20 bg-white flex gap-1.5 px-2.5 pt-1.5 pb-3" style={{ borderTop: '1px solid #EADFD2' }}>
+        <NavBtn icon="home" hi="होम" en="Home" to="/home" active />
+        <NavBtn icon="mic" hi={t('home.speak')} en={t('home.speakSub')} to="/register" search={{ category: '__voice__' }} />
+        <NavBtn icon="list_alt" hi={t('home.track')} en={t('home.trackSub')} to="/track" />
       </nav>
     </div>
+  );
+}
+
+function NavBtn({ icon, hi, en, to, search, active }: {
+  icon: string; hi: string; en: string; to: string; search?: Record<string, string>; active?: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      search={search as never}
+      className="flex-1 flex flex-col items-center justify-center gap-0.5 rounded-2xl"
+      style={{
+        background: active ? '#FBE3D9' : 'transparent',
+        color: active ? '#B9472F' : '#6B5A4C',
+      }}
+    >
+      <span className="material-symbols-rounded text-2xl">{icon}</span>
+      <span className="text-sm font-bold leading-none">{hi}</span>
+      <span className="text-[11px] leading-none">{en}</span>
+    </Link>
   );
 }

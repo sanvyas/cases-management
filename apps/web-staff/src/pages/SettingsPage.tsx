@@ -26,10 +26,10 @@ const SETTINGS: Setting[] = [
 ];
 
 const groups = [
-  { key: 'general', label: 'General' },
-  { key: 'case_rules', label: 'Case Rules' },
-  { key: 'messaging', label: 'Messaging' },
-  { key: 'security', label: 'Security' },
+  { key: 'general', label: 'General', icon: 'settings' },
+  { key: 'case_rules', label: 'Case Rules', icon: 'gavel' },
+  { key: 'messaging', label: 'Messaging', icon: 'sms' },
+  { key: 'security', label: 'Security', icon: 'shield' },
 ];
 
 export function SettingsPage() {
@@ -38,42 +38,44 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
+      <div>
+        <h2 className="text-2xl font-extrabold text-dark">Settings</h2>
+        <p className="text-sm text-dark-muted">Tenant configuration</p>
+      </div>
 
       <div className="flex gap-6">
-        {/* Group Nav */}
-        <nav className="w-48 space-y-1">
+        <nav className="w-52 space-y-1">
           {groups.map((g) => (
             <button
               key={g.key}
               onClick={() => setActiveGroup(g.key)}
-              className={`block w-full rounded-lg px-4 py-2 text-left text-sm font-medium transition-colors ${
-                activeGroup === g.key
-                  ? 'bg-slate-800 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className="flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left text-sm font-bold transition-colors"
+              style={{
+                background: activeGroup === g.key ? '#C24E33' : 'transparent',
+                color: activeGroup === g.key ? '#fff' : '#4A3E34',
+              }}
             >
+              <span className="material-symbols-rounded text-xl">{g.icon}</span>
               {g.label}
             </button>
           ))}
         </nav>
 
-        {/* Settings List */}
-        <div className="flex-1 rounded-xl border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h3 className="text-sm font-semibold text-gray-900">
+        <div className="flex-1 rounded-2xl bg-white" style={{ boxShadow: '0 1px 0 #EADFD2' }}>
+          <div className="border-b border-cream-darker px-6 py-4">
+            <h3 className="text-base font-extrabold text-dark">
               {groups.find((g) => g.key === activeGroup)?.label}
             </h3>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-cream">
             {filtered.map((s) => (
               <div key={s.key} className="flex items-center justify-between px-6 py-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{s.description}</p>
-                  <p className="text-xs text-gray-400">{s.key}</p>
+                  <p className="text-sm font-bold text-dark">{s.description}</p>
+                  <p className="text-xs text-dark-muted">{s.key}</p>
                 </div>
                 <div className="text-right">
-                  <span className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-mono text-gray-700">
+                  <span className="rounded-xl bg-cream px-3 py-1.5 text-sm font-bold text-dark" style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>
                     {typeof s.value === 'boolean'
                       ? s.value ? 'Yes' : 'No'
                       : String(s.value)}
