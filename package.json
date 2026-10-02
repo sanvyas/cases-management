@@ -36,6 +36,15 @@
       "esbuild",
       "msgpackr-extract",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "postcss@<=8.5.17": "8.5.18",
+      "image-size@<=2.0.2": "2.0.3"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-86w9-cpqp-85rv"
+      ]
+    }
   }
 }
