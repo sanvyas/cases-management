@@ -1,9 +1,46 @@
 import { useState, useMemo } from 'react';
-import { staffMembers } from '../data/mockData';
+import { staffMembers as seedStaffMembers } from '../data/mockData';
 import { useAuth } from '../auth';
 import { getDeployedConfig } from '../platformConfig';
 
 const SETTINGS_STORAGE_KEY = 'samadhan_settings';
+const STAFF_STORAGE_KEY = 'samadhan_staff_directory';
+
+interface StaffRecord {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  designation: string;
+  department: string;
+  role: string;
+  status: 'active' | 'inactive';
+  addedAt: string;
+}
+
+function loadStaffDirectory(): StaffRecord[] {
+  try {
+    const raw = localStorage.getItem(STAFF_STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as StaffRecord[];
+  } catch { /* noop */ }
+  return seedStaffMembers.map(s => ({
+    id: s.id,
+    name: s.name,
+    email: '',
+    phone: '',
+    designation: s.designation,
+    department: s.department,
+    role: 'field_staff',
+    status: 'active' as const,
+    addedAt: '2026-06-15T00:00:00Z',
+  }));
+}
+
+function saveStaffDirectory(staff: StaffRecord[]): void {
+  try {
+    localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(staff));
+  } catch { /* noop */ }
+}
 
 interface TenantSettings {
   autoAssignEnabled: boolean;
@@ -134,6 +171,25 @@ const groups = [
 
 const DEPARTMENTS = ['Water Works', 'Sanitation', 'Electrical', 'Public Works', 'Sewerage', 'Revenue', 'Welfare', 'Administration'];
 
+const ROLE_OPTIONS = [
+  { key: 'tenant_admin', label: 'Tenant Admin' },
+  { key: 'nodal_officer', label: 'Nodal Officer' },
+  { key: 'officer', label: 'Officer' },
+  { key: 'field_staff', label: 'Field Staff' },
+  { key: 'agent', label: 'Agent' },
+  { key: 'vendor_admin', label: 'Vendor Admin' },
+  { key: 'vendor_staff', label: 'Vendor Staff' },
+  { key: 'viewer', label: 'Viewer' },
+];
+
+const DESIGNATION_OPTIONS = [
+  'Executive Officer', 'Commissioner', 'Additional Commissioner',
+  'Superintendent Engineer', 'Executive Engineer', 'Assistant Engineer',
+  'Junior Engineer', 'Sanitary Inspector', 'Health Officer',
+  'Revenue Inspector', 'Data Entry Operator', 'Accounts Officer',
+  'Ward Supervisor', 'Zonal Officer', 'Nagar Sevak',
+];
+
 export function SettingsPage() {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('settings.edit');
@@ -145,6 +201,46 @@ export function SettingsPage() {
   const [tenantSettings, setTenantSettings] = useState(() => getSettings());
   const [newRuleDept, setNewRuleDept] = useState('');
   const [newRuleAssignee, setNewRuleAssignee] = useState('');
+
+  const [staffDirectory, setStaffDirectory] = useState(() => loadStaffDirectory());
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newUser, setNewUser] = useState({ name: '', email: '', phone: '', designation: '', department: '', role: 'field_staff' });
+  const [addUserError, setAddUserError] = useState('');
+
+  function handleAddUser() {
+    if (!newUser.name.trim()) { setAddUserError('Name is required'); return; }
+    if (!newUser.phone.trim() || newUser.phone.length < 10) { setAddUserError('Valid 10-digit phone number is required'); return; }
+    if (!newUser.department) { setAddUserError('Department is required'); return; }
+    if (!newUser.designation) { setAddUserError('Designation is required'); return; }
+    if (!newUser.role) { setAddUserError('Role is required'); return; }
+
+    const record: StaffRecord = {
+      id: `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      name: newUser.name.trim(),
+      email: newUser.email.trim(),
+      phone: newUser.phone.trim(),
+      designation: newUser.designation,
+      department: newUser.department,
+      role: newUser.role,
+      status: 'active',
+      addedAt: new Date().toISOString(),
+    };
+
+    const updated = [...staffDirectory, record];
+    setStaffDirectory(updated);
+    saveStaffDirectory(updated);
+    setShowAddUser(false);
+    setNewUser({ name: '', email: '', phone: '', designation: '', department: '', role: 'field_staff' });
+    setAddUserError('');
+  }
+
+  function toggleUserStatus(id: string) {
+    const updated = staffDirectory.map(s =>
+      s.id === id ? { ...s, status: (s.status === 'active' ? 'inactive' : 'active') as 'active' | 'inactive' } : s
+    );
+    setStaffDirectory(updated);
+    saveStaffDirectory(updated);
+  }
 
   function toggleAutoAssign() {
     const updated = { ...tenantSettings, autoAssignEnabled: !tenantSettings.autoAssignEnabled };
@@ -316,8 +412,8 @@ export function SettingsPage() {
                             className="w-full h-10 rounded-xl border-2 border-cream-darker bg-cream px-3 text-sm outline-none focus:border-primary"
                           >
                             <option value="">Select...</option>
-                            {staffMembers
-                              .filter(s => !newRuleDept || s.department === newRuleDept || true)
+                            {staffDirectory
+                              .filter(s => s.status === 'active')
                               .map(s => (
                                 <option key={s.id} value={s.name}>{s.name} ({s.department})</option>
                               ))}
@@ -384,11 +480,16 @@ export function SettingsPage() {
             <div className="p-6 space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-extrabold text-dark">Staff Directory</h4>
-                  <button className="flex items-center gap-1 h-9 px-4 rounded-xl bg-primary text-white text-sm font-bold">
-                    <span className="material-symbols-rounded text-lg">person_add</span>
-                    Add User
-                  </button>
+                  <h4 className="text-sm font-extrabold text-dark">Staff Directory ({staffDirectory.length})</h4>
+                  {canEdit && (
+                    <button
+                      onClick={() => setShowAddUser(true)}
+                      className="flex items-center gap-1 h-9 px-4 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary-dark transition-colors"
+                    >
+                      <span className="material-symbols-rounded text-lg">person_add</span>
+                      Add User
+                    </button>
+                  )}
                 </div>
                 <div className="rounded-xl border border-cream-darker overflow-hidden">
                   <table className="w-full text-sm">
@@ -397,31 +498,54 @@ export function SettingsPage() {
                         <th className="text-left px-4 py-2.5 font-bold text-dark-muted">Name</th>
                         <th className="text-left px-4 py-2.5 font-bold text-dark-muted">Designation</th>
                         <th className="text-left px-4 py-2.5 font-bold text-dark-muted">Department</th>
+                        <th className="text-left px-4 py-2.5 font-bold text-dark-muted">Role</th>
                         <th className="text-left px-4 py-2.5 font-bold text-dark-muted">Status</th>
-                        <th className="text-left px-4 py-2.5 font-bold text-dark-muted">Last Active</th>
+                        <th className="text-left px-4 py-2.5 font-bold text-dark-muted">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-cream">
-                      {staffMembers.map((s) => (
-                        <tr key={s.id}>
+                      {staffDirectory.map((s) => (
+                        <tr key={s.id} className={s.status === 'inactive' ? 'opacity-50' : ''}>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-cream-dark text-xs font-bold text-dark">
-                                {s.name.split(' ').slice(-2).map(n => n[0]).join('')}
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white flex-none" style={{ background: s.status === 'active' ? '#C24E33' : '#8A7766' }}>
+                                {s.name.split(' ').filter(n => n.length > 0).slice(-2).map(n => n[0]).join('')}
                               </span>
-                              <span className="font-bold text-dark">{s.name}</span>
+                              <div>
+                                <span className="font-bold text-dark block">{s.name}</span>
+                                {s.email && <span className="text-[11px] text-dark-muted">{s.email}</span>}
+                              </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-dark-secondary">{s.designation}</td>
-                          <td className="px-4 py-3 text-dark-secondary">{s.department}</td>
+                          <td className="px-4 py-3 text-dark-secondary text-xs">{s.designation}</td>
+                          <td className="px-4 py-3 text-dark-secondary text-xs">{s.department}</td>
                           <td className="px-4 py-3">
-                            <span className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-bold bg-success-light text-success">
-                              <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                              Active
+                            <span className="rounded-lg bg-cream px-2 py-0.5 text-[11px] font-bold text-dark">
+                              {ROLE_OPTIONS.find(r => r.key === s.role)?.label || s.role}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-dark-muted text-xs">
-                            {new Date(Date.now() - Math.random() * 86400000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          <td className="px-4 py-3">
+                            <span
+                              className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-bold"
+                              style={{
+                                background: s.status === 'active' ? '#E6F5EC' : '#FEE4E2',
+                                color: s.status === 'active' ? '#2F7D4F' : '#B42318',
+                              }}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.status === 'active' ? '#2F7D4F' : '#B42318' }} />
+                              {s.status === 'active' ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {canEdit && (
+                              <button
+                                onClick={() => toggleUserStatus(s.id)}
+                                className="text-xs font-bold hover:underline"
+                                style={{ color: s.status === 'active' ? '#B42318' : '#2F7D4F' }}
+                              >
+                                {s.status === 'active' ? 'Deactivate' : 'Activate'}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -457,6 +581,117 @@ export function SettingsPage() {
           )}
         </div>
       </div>
+      {showAddUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowAddUser(false)}>
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-extrabold text-dark">Add Staff User</h3>
+              <button onClick={() => { setShowAddUser(false); setAddUserError(''); }} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-cream">
+                <span className="material-symbols-rounded text-xl text-dark-muted">close</span>
+              </button>
+            </div>
+
+            {addUserError && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-bold text-danger">
+                <span className="material-symbols-rounded text-lg">error</span>
+                {addUserError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-dark-muted mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  value={newUser.name}
+                  onChange={e => setNewUser({ ...newUser, name: e.target.value })}
+                  className="w-full h-11 rounded-xl border-2 border-cream-darker bg-cream px-4 text-sm font-bold text-dark outline-none focus:border-primary"
+                  placeholder="e.g. Sh. Rajesh Kumar"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-dark-muted mb-1">Phone Number *</label>
+                  <div className="flex">
+                    <span className="flex h-11 items-center rounded-l-xl border-2 border-r-0 border-cream-darker bg-cream-dark px-3 text-sm font-bold text-dark-muted">+91</span>
+                    <input
+                      type="tel"
+                      value={newUser.phone}
+                      onChange={e => setNewUser({ ...newUser, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                      className="w-full h-11 rounded-r-xl border-2 border-cream-darker bg-cream px-3 text-sm font-bold text-dark outline-none focus:border-primary"
+                      placeholder="10-digit number"
+                      maxLength={10}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-dark-muted mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={newUser.email}
+                    onChange={e => setNewUser({ ...newUser, email: e.target.value })}
+                    className="w-full h-11 rounded-xl border-2 border-cream-darker bg-cream px-4 text-sm font-bold text-dark outline-none focus:border-primary"
+                    placeholder="user@org.gov.in"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-dark-muted mb-1">Department *</label>
+                  <select
+                    value={newUser.department}
+                    onChange={e => setNewUser({ ...newUser, department: e.target.value })}
+                    className="w-full h-11 rounded-xl border-2 border-cream-darker bg-cream px-3 text-sm font-bold text-dark outline-none focus:border-primary appearance-none cursor-pointer"
+                  >
+                    <option value="">Select department</option>
+                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-dark-muted mb-1">Designation *</label>
+                  <select
+                    value={newUser.designation}
+                    onChange={e => setNewUser({ ...newUser, designation: e.target.value })}
+                    className="w-full h-11 rounded-xl border-2 border-cream-darker bg-cream px-3 text-sm font-bold text-dark outline-none focus:border-primary appearance-none cursor-pointer"
+                  >
+                    <option value="">Select designation</option>
+                    {DESIGNATION_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-dark-muted mb-1">Role *</label>
+                <select
+                  value={newUser.role}
+                  onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+                  className="w-full h-11 rounded-xl border-2 border-cream-darker bg-cream px-3 text-sm font-bold text-dark outline-none focus:border-primary appearance-none cursor-pointer"
+                >
+                  {ROLE_OPTIONS.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-cream-darker">
+              <button
+                onClick={() => { setShowAddUser(false); setAddUserError(''); setNewUser({ name: '', email: '', phone: '', designation: '', department: '', role: 'field_staff' }); }}
+                className="h-11 px-5 rounded-xl border-2 border-cream-darker bg-white text-sm font-bold text-dark hover:bg-cream transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddUser}
+                className="h-11 px-5 rounded-xl bg-primary text-sm font-bold text-white hover:opacity-90 transition-colors flex items-center gap-2"
+              >
+                <span className="material-symbols-rounded text-lg">person_add</span>
+                Create User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
