@@ -3,18 +3,28 @@ import { useAuth } from '../auth';
 
 export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
   const { login } = useAuth();
-  const [email, setEmail] = useState('admin@samadhan.in');
-  const [password, setPassword] = useState('samadhan');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
-    if (!login(email, password)) {
-      setError('Invalid credentials');
-    } else {
-      onSuccess();
+    if (!email.trim() || !password) {
+      setError('Please enter email and password.');
+      return;
     }
+    setError('');
+    setLoading(true);
+    setTimeout(() => {
+      const result = login(email, password);
+      setLoading(false);
+      if (!result.ok) {
+        setError(result.error || 'Invalid credentials');
+      } else {
+        onSuccess();
+      }
+    }, 300);
   }
 
   return (
@@ -41,7 +51,8 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="w-full h-12 rounded-xl border-2 border-cream-darker bg-cream pl-10 pr-4 text-sm font-bold text-dark outline-none focus:border-primary"
-                placeholder="admin@samadhan.in"
+                placeholder="Email address"
+                autoComplete="email"
               />
             </div>
           </div>
@@ -56,6 +67,7 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
                 onChange={e => setPassword(e.target.value)}
                 className="w-full h-12 rounded-xl border-2 border-cream-darker bg-cream pl-10 pr-4 text-sm font-bold text-dark outline-none focus:border-primary"
                 placeholder="Password"
+                autoComplete="current-password"
               />
             </div>
           </div>
@@ -69,15 +81,18 @@ export function LoginPage({ onSuccess }: { onSuccess: () => void }) {
 
           <button
             type="submit"
-            className="flex w-full h-12 items-center justify-center gap-2 rounded-xl bg-primary text-base font-extrabold text-white transition-colors hover:bg-primary-dark"
+            disabled={loading}
+            className="flex w-full h-12 items-center justify-center gap-2 rounded-xl bg-primary text-base font-extrabold text-white transition-colors hover:bg-primary-dark disabled:opacity-60"
           >
-            <span className="material-symbols-rounded text-xl">login</span>
-            Sign In
+            {loading ? (
+              <span className="material-symbols-rounded text-xl animate-spin">progress_activity</span>
+            ) : (
+              <>
+                <span className="material-symbols-rounded text-xl">login</span>
+                Sign In
+              </>
+            )}
           </button>
-
-          <p className="text-center text-xs text-dark-muted">
-            Demo: admin@samadhan.in / samadhan
-          </p>
         </form>
       </div>
     </div>

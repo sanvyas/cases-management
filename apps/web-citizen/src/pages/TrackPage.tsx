@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useLang } from '../lang';
 import { categories, locations, STATUS_STYLES, STEPS, mockComplaints } from '../data/mockData';
-import { getComplaints, type StoredComplaint } from '../store';
+import { getMyComplaints, type StoredComplaint } from '../store';
 import { speak } from '../media';
 
 function statusToStep(status: string): number {
@@ -68,7 +68,7 @@ export function TrackPage() {
   const [complaints, setComplaints] = useState<DisplayComplaint[]>([]);
 
   useEffect(() => {
-    const stored = getComplaints().map(storedToDisplay);
+    const stored = getMyComplaints().map(storedToDisplay);
     const mocks = mockComplaints.map(m => ({ ...m, isStored: false, step: m.step as number }));
     setComplaints([...stored, ...mocks]);
   }, []);

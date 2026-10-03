@@ -218,24 +218,50 @@ export interface CitizenUser {
   phone: string;
 }
 
+interface CitizenSession {
+  user: CitizenUser;
+  expiresAt: number;
+}
+
+const CITIZEN_SESSION_TIMEOUT_MS = 60 * 60 * 1000;
+
 export function getCitizenUser(): CitizenUser | null {
   try {
     const raw = localStorage.getItem(CITIZEN_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as CitizenUser;
+    const session = JSON.parse(raw) as CitizenSession;
+    if (session.expiresAt && Date.now() > session.expiresAt) {
+      localStorage.removeItem(CITIZEN_KEY);
+      return null;
+    }
+    return session.user;
   } catch {
+    localStorage.removeItem(CITIZEN_KEY);
     return null;
   }
 }
 
 export function saveCitizenUser(user: CitizenUser): void {
+  const session: CitizenSession = { user, expiresAt: Date.now() + CITIZEN_SESSION_TIMEOUT_MS };
   try {
-    localStorage.setItem(CITIZEN_KEY, JSON.stringify(user));
+    localStorage.setItem(CITIZEN_KEY, JSON.stringify(session));
   } catch { /* noop */ }
+}
+
+export function refreshCitizenSession(): void {
+  const user = getCitizenUser();
+  if (user) saveCitizenUser(user);
 }
 
 export function clearCitizenUser(): void {
   try {
     localStorage.removeItem(CITIZEN_KEY);
   } catch { /* noop */ }
+}
+
+export function getMyComplaints(): StoredComplaint[] {
+  const user = getCitizenUser();
+  if (!user) return [];
+  const all = getComplaints();
+  return all.filter(c => c.citizenPhone === user.phone);
 }

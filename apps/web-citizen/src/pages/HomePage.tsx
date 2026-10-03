@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useLang } from '../lang';
 import { categories, STATUS_STYLES } from '../data/mockData';
-import { getComplaints, getCitizenUser, clearCitizenUser, type StoredComplaint } from '../store';
+import { getMyComplaints, getCitizenUser, clearCitizenUser, refreshCitizenSession, type StoredComplaint } from '../store';
 import { getDeployedConfig } from '../platformConfig';
 
 function statusToStep(status: string): number {
@@ -31,7 +31,8 @@ export function HomePage() {
   const previewCats = categories.slice(0, 5);
 
   useEffect(() => {
-    const stored = getComplaints();
+    refreshCitizenSession();
+    const stored = getMyComplaints();
     setComplaintCount(stored.length);
     if (stored.length > 0) {
       setLatestComplaint(stored[0]!);
