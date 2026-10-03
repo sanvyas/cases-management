@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   createRouter,
@@ -10,6 +10,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router';
 import { AuthProvider, useAuth } from './auth';
+import { getDeployedConfig } from './platformConfig';
 import { DashboardPage } from './pages/DashboardPage';
 import { CasesPage } from './pages/CasesPage';
 import { CaseDetailPage } from './pages/CaseDetailPage';
@@ -31,6 +32,11 @@ function AuthGuard() {
 function OfficerLayout() {
   const { user, logout, hasPermission } = useAuth();
   const navigate = useNavigate();
+  const deployed = useMemo(() => getDeployedConfig(), []);
+  const tenantName = deployed?.tenant.name || user?.tenantName || 'Samadhan';
+  const primaryColor = deployed?.config.branding.primaryColor || '#C24E33';
+  const headerText = deployed?.config.branding.headerText || '';
+  const planName = deployed?.tenant.planName || '';
 
   const allNavItems = [
     { to: '/' as const, label: 'Dashboard', icon: 'dashboard', permission: 'dashboard.view' },
@@ -57,8 +63,9 @@ function OfficerLayout() {
             <Link
               key={item.to}
               to={item.to}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/60 transition-colors hover:bg-white/10 hover:text-white [&.active]:bg-primary [&.active]:text-white"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/60 transition-colors hover:bg-white/10 hover:text-white"
               activeOptions={{ exact: item.to === '/' }}
+              activeProps={{ style: { background: primaryColor, color: '#fff' } }}
             >
               <span className="material-symbols-rounded text-xl">{item.icon}</span>
               {item.label}
@@ -67,7 +74,7 @@ function OfficerLayout() {
         </nav>
         <div className="border-t border-white/10 p-3">
           <div className="flex items-center gap-3 px-3 py-2 mb-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: primaryColor }}>
               {user?.name.split(' ').map((n) => n[0]).join('')}
             </span>
             <div className="min-w-0 flex-1">
@@ -87,10 +94,22 @@ function OfficerLayout() {
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center justify-between border-b border-cream-darker bg-white px-6">
           <div className="flex items-center gap-2 text-sm text-dark-muted">
-            <span className="material-symbols-rounded text-lg">apartment</span>
-            <span className="font-bold text-dark">{user?.tenantName}</span>
+            <span className="material-symbols-rounded text-lg" style={{ color: primaryColor }}>apartment</span>
+            <span className="font-bold text-dark">{tenantName}</span>
+            {headerText && <span className="text-xs text-dark-muted">· {headerText}</span>}
+            {planName && (
+              <span className="rounded-lg px-2 py-0.5 text-[10px] font-bold" style={{ background: '#E0F0FF', color: '#2F6690' }}>
+                {planName}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3">
+            {deployed && (
+              <span className="flex items-center gap-1 text-[11px] font-bold text-success">
+                <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                Live
+              </span>
+            )}
             <button className="relative flex h-10 w-10 items-center justify-center rounded-xl text-dark-muted hover:bg-cream-dark">
               <span className="material-symbols-rounded text-2xl">notifications</span>
               <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-danger border-2 border-white" />

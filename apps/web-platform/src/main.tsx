@@ -5,7 +5,10 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { EnvironmentPage } from './pages/EnvironmentPage';
 import { NewEnvironmentPage } from './pages/NewEnvironmentPage';
+import { seedDefaultConfig } from './platformConfig';
 import './index.css';
+
+seedDefaultConfig();
 
 type View =
   | { page: 'dashboard' }

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useLang } from '../lang';
 import { categories, STATUS_STYLES } from '../data/mockData';
 import { getComplaints, getCitizenUser, clearCitizenUser, type StoredComplaint } from '../store';
+import { getDeployedConfig } from '../platformConfig';
 
 function statusToStep(status: string): number {
   switch (status) {
@@ -17,11 +18,16 @@ function statusToStep(status: string): number {
 }
 
 export function HomePage() {
-  const { t } = useLang();
+  const { t, language } = useLang();
   const navigate = useNavigate();
   const [latestComplaint, setLatestComplaint] = useState<StoredComplaint | null>(null);
   const [complaintCount, setComplaintCount] = useState(0);
   const citizen = getCitizenUser();
+  const deployed = useMemo(() => getDeployedConfig(), []);
+  const orgName = deployed?.tenant.name || '';
+  const primaryColor = deployed?.config.branding.primaryColor || '#C24E33';
+  const helpline = deployed?.config.branding.helplineNumber || '';
+  const voiceEnabled = deployed?.config.features.modules.voice_app ?? true;
   const previewCats = categories.slice(0, 5);
 
   useEffect(() => {
@@ -46,9 +52,12 @@ export function HomePage() {
         <div className="mb-5 flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-extrabold leading-tight text-dark">{t('app.title')}</h1>
+            {orgName && (
+              <p className="text-sm font-bold mt-0.5" style={{ color: primaryColor }}>{orgName}</p>
+            )}
             <p className="text-sm text-dark-muted">{t('app.subtitle')}</p>
             {citizen && (
-              <p className="text-sm font-bold text-primary mt-1">
+              <p className="text-sm font-bold mt-1" style={{ color: primaryColor }}>
                 <span className="material-symbols-rounded text-sm align-middle mr-1">person</span>
                 {citizen.name}
               </p>
@@ -65,21 +74,23 @@ export function HomePage() {
         </div>
 
         {/* Two big choice buttons */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          <Link
-            to="/register"
-            search={{ category: '__voice__' }}
-            className="flex flex-col items-center justify-center gap-2 rounded-3xl bg-primary p-5 text-white text-center"
-            style={{ minHeight: 140 }}
-          >
-            <span className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
-              <span className="material-symbols-rounded text-4xl">mic</span>
-            </span>
-            <div>
-              <div className="text-lg font-bold leading-tight">{t('home.voice')}</div>
-              <div className="text-xs opacity-80">{t('home.voiceSub')}</div>
-            </div>
-          </Link>
+        <div className={`grid gap-3 mb-5 ${voiceEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {voiceEnabled && (
+            <Link
+              to="/register"
+              search={{ category: '__voice__' }}
+              className="flex flex-col items-center justify-center gap-2 rounded-3xl p-5 text-white text-center"
+              style={{ minHeight: 140, background: primaryColor }}
+            >
+              <span className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                <span className="material-symbols-rounded text-4xl">mic</span>
+              </span>
+              <div>
+                <div className="text-lg font-bold leading-tight">{t('home.voice')}</div>
+                <div className="text-xs opacity-80">{t('home.voiceSub')}</div>
+              </div>
+            </Link>
+          )}
 
           <Link
             to="/register"
@@ -88,7 +99,7 @@ export function HomePage() {
             style={{ minHeight: 140, boxShadow: '0 1px 0 #EADFD2' }}
           >
             <span className="w-16 h-16 rounded-full bg-cream-dark flex items-center justify-center">
-              <span className="material-symbols-rounded text-4xl text-primary">grid_view</span>
+              <span className="material-symbols-rounded text-4xl" style={{ color: primaryColor }}>grid_view</span>
             </span>
             <div>
               <div className="text-lg font-bold leading-tight">{t('home.pick')}</div>
@@ -178,12 +189,28 @@ export function HomePage() {
             {t('home.track')} ({complaintCount}) →
           </Link>
         )}
+
+        {helpline && (
+          <div className="rounded-2xl p-3 mb-3 flex items-center gap-3" style={{ background: '#E0F0FF' }}>
+            <span className="w-10 h-10 rounded-full flex items-center justify-center flex-none" style={{ background: '#2F6690' }}>
+              <span className="material-symbols-rounded text-xl text-white">call</span>
+            </span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-dark">
+                {language === 'hi' ? 'हेल्पलाइन' : 'Helpline'}: {helpline}
+              </p>
+              <p className="text-xs text-dark-muted">{orgName}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom Nav */}
       <nav className="flex-none h-20 bg-white flex gap-1.5 px-2.5 pt-1.5 pb-3" style={{ borderTop: '1px solid #EADFD2' }}>
         <NavBtn icon="home" hi="होम" en="Home" to="/home" active />
-        <NavBtn icon="mic" hi={t('home.speak')} en={t('home.speakSub')} to="/register" search={{ category: '__voice__' }} />
+        {voiceEnabled && (
+          <NavBtn icon="mic" hi={t('home.speak')} en={t('home.speakSub')} to="/register" search={{ category: '__voice__' }} />
+        )}
         <NavBtn icon="list_alt" hi={t('home.track')} en={t('home.trackSub')} to="/track" />
       </nav>
     </div>

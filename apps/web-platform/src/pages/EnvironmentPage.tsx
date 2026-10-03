@@ -8,6 +8,7 @@ import {
   MODULE_LABELS,
   STATUS_STYLES,
 } from '../data/mockData';
+import { deployConfig } from '../platformConfig';
 import type { EnvironmentConfig } from '../types';
 
 interface Props {
@@ -78,6 +79,7 @@ export function EnvironmentPage({ envId, onBack }: Props) {
     () => TENANT_CONFIGS[envId] || getDefaultConfig()
   );
   const [saved, setSaved] = useState(false);
+  const [deployMessage, setDeployMessage] = useState('');
 
   const usage = useMemo(() => getUsageData(envId), [envId]);
   const costs = useMemo(() => getCostBreakdown(envId), [envId]);
@@ -97,8 +99,11 @@ export function EnvironmentPage({ envId, onBack }: Props) {
   const st = STATUS_STYLES[tenant.status]!;
 
   function handleSave() {
+    if (!tenant) return;
+    deployConfig(tenant, config);
     setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setDeployMessage(`Deployed to ${tenant.name}. Staff and Citizen apps will reflect these changes.`);
+    setTimeout(() => { setSaved(false); setDeployMessage(''); }, 4000);
   }
 
   function updateCloud(key: string, value: string) {
@@ -200,6 +205,23 @@ export function EnvironmentPage({ envId, onBack }: Props) {
           {saved ? 'Saved' : 'Deploy Changes'}
         </button>
       </div>
+
+      {deployMessage && (
+        <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: '#E6F5EC', border: '1px solid #2F7D4F' }}>
+          <span className="material-symbols-rounded text-xl text-success">check_circle</span>
+          <p className="text-sm font-bold text-success flex-1">{deployMessage}</p>
+          <div className="flex gap-2">
+            <a href="/staff/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white" style={{ background: '#2F7D4F' }}>
+              <span className="material-symbols-rounded text-sm">open_in_new</span>
+              Staff Console
+            </a>
+            <a href="/citizen/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white" style={{ background: '#2F7D4F' }}>
+              <span className="material-symbols-rounded text-sm">open_in_new</span>
+              Citizen App
+            </a>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-6">
         <nav className="w-52 space-y-1 flex-none">

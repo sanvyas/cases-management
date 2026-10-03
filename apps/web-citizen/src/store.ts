@@ -1,4 +1,5 @@
 import { categories, locations, TENANT } from './data/mockData';
+import { getDeployedConfig } from './platformConfig';
 
 const STORAGE_KEY = 'samadhan_complaints';
 const CITIZEN_KEY = 'samadhan_citizen';
@@ -124,7 +125,9 @@ export function saveComplaint(data: {
 }): string {
   const now = new Date().toISOString();
   const id = `citizen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const num = `${TENANT.prefix}-${new Date().getFullYear().toString().slice(-2)}-${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
+  const deployed = getDeployedConfig();
+  const prefix = deployed?.tenant.casePrefix || TENANT.prefix;
+  const num = `${prefix}-${new Date().getFullYear().toString().slice(-2)}-${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
 
   const cat = data.catIndex >= 0 ? categories[data.catIndex] : null;
   const sub = cat && data.subIndex >= 0 ? cat.subs[data.subIndex] : null;

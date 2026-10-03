@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { staffMembers } from '../data/mockData';
 import { useAuth } from '../auth';
+import { getDeployedConfig } from '../platformConfig';
 
 const SETTINGS_STORAGE_KEY = 'samadhan_settings';
 
@@ -39,30 +40,40 @@ interface Setting {
   group: string;
 }
 
-const SETTINGS: Setting[] = [
-  { key: 'general.name', value: 'Demo Nagar Nigam', description: 'Organization name', group: 'general' },
-  { key: 'general.short_name', value: 'DNN', description: 'Short name', group: 'general' },
-  { key: 'general.case_prefix', value: 'GMD', description: 'Case number prefix', group: 'general' },
-  { key: 'general.timezone', value: 'Asia/Kolkata', description: 'Timezone', group: 'general' },
-  { key: 'general.default_language', value: 'hi', description: 'Default language', group: 'general' },
-  { key: 'case.default_sla_hours', value: 48, description: 'Default SLA hours', group: 'case_rules' },
-  { key: 'case.acceptance_timeout_minutes', value: 10, description: 'Acceptance timeout (minutes)', group: 'case_rules' },
-  { key: 'case.reopen_window_days', value: 7, description: 'Reopen window (days)', group: 'case_rules' },
-  { key: 'case.max_reopens', value: 3, description: 'Maximum reopens', group: 'case_rules' },
-  { key: 'case.auto_close_days', value: 15, description: 'Auto-close after resolution (days)', group: 'case_rules' },
-  { key: 'messaging.quiet_hours_start', value: '22:00', description: 'Quiet hours start', group: 'messaging' },
-  { key: 'messaging.quiet_hours_end', value: '07:00', description: 'Quiet hours end', group: 'messaging' },
-  { key: 'messaging.primary_channel', value: 'whatsapp', description: 'Primary notification channel', group: 'messaging' },
-  { key: 'messaging.sms_fallback', value: true, description: 'SMS fallback (OTP only)', group: 'messaging' },
-  { key: 'messaging.whatsapp_business_id', value: '', description: 'WhatsApp Business API number', group: 'messaging' },
-  { key: 'intake.phone_mode', value: 'inbound_only', description: 'Phone intake mode', group: 'intake' },
-  { key: 'intake.channels_enabled', value: 'web,whatsapp,walk_in,phone_inbound', description: 'Enabled intake channels', group: 'intake' },
-  { key: 'intake.media_compression', value: true, description: 'Auto-compress uploaded images', group: 'intake' },
-  { key: 'intake.max_image_size_kb', value: 500, description: 'Max compressed image size (KB)', group: 'intake' },
-  { key: 'intake.speech_engine', value: 'browser_native', description: 'Speech recognition engine', group: 'intake' },
-  { key: 'security.staff_2fa_required', value: false, description: 'Require 2FA for staff', group: 'security' },
-  { key: 'security.session_timeout_minutes', value: 30, description: 'Session timeout (minutes)', group: 'security' },
-];
+function buildSettings(): Setting[] {
+  const deployed = getDeployedConfig();
+  const t = deployed?.tenant;
+  const c = deployed?.config;
+  return [
+    { key: 'general.name', value: t?.name || 'Demo Nagar Nigam', description: 'Organization name', group: 'general' },
+    { key: 'general.short_name', value: t?.slug?.toUpperCase().slice(0, 3) || 'DNN', description: 'Short name', group: 'general' },
+    { key: 'general.case_prefix', value: t?.casePrefix || 'GMD', description: 'Case number prefix', group: 'general' },
+    { key: 'general.timezone', value: t?.timezone || 'Asia/Kolkata', description: 'Timezone', group: 'general' },
+    { key: 'general.default_language', value: t?.defaultLanguage || 'hi', description: 'Default language', group: 'general' },
+    { key: 'case.default_sla_hours', value: 48, description: 'Default SLA hours', group: 'case_rules' },
+    { key: 'case.acceptance_timeout_minutes', value: 10, description: 'Acceptance timeout (minutes)', group: 'case_rules' },
+    { key: 'case.reopen_window_days', value: 7, description: 'Reopen window (days)', group: 'case_rules' },
+    { key: 'case.max_reopens', value: 3, description: 'Maximum reopens', group: 'case_rules' },
+    { key: 'case.auto_close_days', value: 15, description: 'Auto-close after resolution (days)', group: 'case_rules' },
+    { key: 'messaging.quiet_hours_start', value: '22:00', description: 'Quiet hours start', group: 'messaging' },
+    { key: 'messaging.quiet_hours_end', value: '07:00', description: 'Quiet hours end', group: 'messaging' },
+    { key: 'messaging.primary_channel', value: c?.communications?.whatsappEnabled ? 'whatsapp' : 'sms', description: 'Primary notification channel', group: 'messaging' },
+    { key: 'messaging.sms_fallback', value: c?.communications?.smsEnabled ?? true, description: 'SMS fallback (OTP only)', group: 'messaging' },
+    { key: 'intake.phone_mode', value: c?.communications?.telephonyEnabled ? 'inbound_only' : 'disabled', description: 'Phone intake mode', group: 'intake' },
+    { key: 'intake.channels_enabled', value: [
+      'web',
+      c?.communications?.whatsappEnabled && 'whatsapp',
+      'walk_in',
+      c?.communications?.telephonyEnabled && 'phone_inbound',
+      c?.communications?.emailEnabled && 'email',
+    ].filter(Boolean).join(','), description: 'Enabled intake channels', group: 'intake' },
+    { key: 'intake.media_compression', value: true, description: 'Auto-compress uploaded images', group: 'intake' },
+    { key: 'intake.max_image_size_kb', value: 500, description: 'Max compressed image size (KB)', group: 'intake' },
+    { key: 'intake.speech_engine', value: c?.features?.modules?.voice_app ? 'browser_native' : 'disabled', description: 'Speech recognition engine', group: 'intake' },
+    { key: 'security.staff_2fa_required', value: c?.security?.staff2faRequired ?? false, description: 'Require 2FA for staff', group: 'security' },
+    { key: 'security.session_timeout_minutes', value: c?.security?.sessionTimeoutMinutes ?? 30, description: 'Session timeout (minutes)', group: 'security' },
+  ];
+}
 
 interface Permission {
   key: string;
@@ -90,12 +101,25 @@ const PERMISSIONS: Permission[] = [
   { key: 'reports.export', label: 'Export Reports', description: 'Download CSV and PDF reports' },
 ];
 
-const ROLES = [
-  { name: 'Supervising Officer', permissions: ['dashboard.view', 'cases.view', 'cases.manage', 'cases.assign', 'cases.comment', 'cases.approve', 'cases.status.change', 'cases.media.upload', 'cases.escalate', 'settings.view', 'settings.edit', 'users.view', 'users.manage', 'citizen.pii.view', 'reports.export'] },
-  { name: 'Junior Engineer (Field)', permissions: ['dashboard.view', 'cases.view', 'cases.comment', 'cases.status.change', 'cases.media.upload', 'cases.atr.submit'] },
-  { name: 'Sanitary Inspector', permissions: ['dashboard.view', 'cases.view', 'cases.comment', 'cases.status.change', 'cases.media.upload', 'cases.atr.submit'] },
-  { name: 'Data Entry Operator', permissions: ['cases.view', 'cases.comment', 'cases.register'] },
-];
+function buildRoles(): Array<{ name: string; permissions: string[] }> {
+  const deployed = getDeployedConfig();
+  if (deployed) {
+    return deployed.config.features.roles
+      .filter(r => r.enabled)
+      .map(r => ({
+        name: r.name,
+        permissions: r.permissions.includes('*')
+          ? PERMISSIONS.map(p => p.key)
+          : r.permissions,
+      }));
+  }
+  return [
+    { name: 'Supervising Officer', permissions: ['dashboard.view', 'cases.view', 'cases.manage', 'cases.assign', 'cases.comment', 'cases.approve', 'cases.status.change', 'cases.media.upload', 'cases.escalate', 'settings.view', 'settings.edit', 'users.view', 'users.manage', 'citizen.pii.view', 'reports.export'] },
+    { name: 'Junior Engineer (Field)', permissions: ['dashboard.view', 'cases.view', 'cases.comment', 'cases.status.change', 'cases.media.upload', 'cases.atr.submit'] },
+    { name: 'Sanitary Inspector', permissions: ['dashboard.view', 'cases.view', 'cases.comment', 'cases.status.change', 'cases.media.upload', 'cases.atr.submit'] },
+    { name: 'Data Entry Operator', permissions: ['cases.view', 'cases.comment', 'cases.register'] },
+  ];
+}
 
 const groups = [
   { key: 'general', label: 'General', icon: 'settings' },
@@ -114,6 +138,8 @@ export function SettingsPage() {
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('settings.edit');
   const [activeGroup, setActiveGroup] = useState('general');
+  const SETTINGS = useMemo(() => buildSettings(), []);
+  const ROLES = useMemo(() => buildRoles(), []);
   const filtered = SETTINGS.filter((s) => s.group === activeGroup);
 
   const [tenantSettings, setTenantSettings] = useState(() => getSettings());
