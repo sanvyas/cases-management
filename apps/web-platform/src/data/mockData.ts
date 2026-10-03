@@ -375,12 +375,25 @@ export const TENANT_CONFIGS: Record<string, EnvironmentConfig> = {
   },
 };
 
-export function getUsageData(tenantId: string): UsageMetric[] {
-  const base = tenantId === 'env-varanasi-nnn' ? 1600 : tenantId === 'env-gorakhpur-nnn' ? 1050 : 400;
+export function getUsageData(tenantId: string, totalCases?: number): UsageMetric[] {
+  const knownBases: Record<string, number> = {
+    'env-varanasi-nnn': 1600,
+    'env-gorakhpur-nnn': 1050,
+    'env-ayodhya-npp': 400,
+    'env-basti-zp': 200,
+    'env-sultanpur-gp': 12,
+    'env-jaunpur-npp': 0,
+  };
+  const base = knownBases[tenantId] ?? (totalCases && totalCases > 0 ? Math.max(1, Math.round(totalCases / 30)) : 0);
+
   const days: UsageMetric[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
+    if (base === 0) {
+      days.push({ date: d.toISOString().slice(0, 10), cases: 0, voiceSessions: 0, whatsappMessages: 0, smsCount: 0, apiCalls: 0, storageGB: 0 });
+      continue;
+    }
     const jitter = 0.7 + Math.random() * 0.6;
     const weekday = d.getDay() > 0 && d.getDay() < 6;
     const mult = weekday ? jitter : jitter * 0.4;

@@ -607,8 +607,8 @@ export function EnvironmentPage({ envId, onBack }: Props) {
   const [deployMessage, setDeployMessage] = useState('');
   const prevConfigRef = useRef<EnvironmentConfig>(config);
 
-  const usage = useMemo(() => getUsageData(envId), [envId]);
-  const costs = useMemo(() => getCostBreakdown(envId), [envId]);
+  const usage = useMemo(() => getUsageData(envId, tenant?.totalCases), [envId, tenant?.totalCases]);
+  const costs = useMemo(() => getCostBreakdown(envId, tenant?.monthlyCost), [envId, tenant?.monthlyCost]);
 
   if (!tenant) {
     return (
