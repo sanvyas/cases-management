@@ -88,7 +88,7 @@ export function LoginPage() {
                 onClick={handleSendOtp}
                 className="w-full h-16 rounded-2xl bg-primary text-white font-bold text-xl flex items-center justify-center gap-2"
               >
-                <span className="material-symbols-rounded text-2xl">sms</span>
+                <span className="material-symbols-rounded text-2xl">send</span>
                 {t('login.sendOtp')}
               </button>
             </>

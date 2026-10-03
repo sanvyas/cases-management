@@ -3,21 +3,12 @@ import { useNavigate } from '@tanstack/react-router';
 import { useLang } from '../lang';
 import { getCitizenUser } from '../store';
 import type { Lang } from '../types';
+import { speak } from '../media';
 
 const LANGS: { code: Lang; label: string; sub: string }[] = [
   { code: 'hi', label: 'हिन्दी', sub: 'Hindi' },
   { code: 'en', label: 'English', sub: 'English' },
 ];
-
-function speak(text: string) {
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'hi-IN';
-    u.rate = 0.92;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch { /* noop */ }
-}
 
 export function LangPickerPage() {
   const { setLanguage } = useLang();

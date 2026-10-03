@@ -84,7 +84,7 @@ export const cases = pgTable(
     breached: boolean('breached').notNull().default(false),
     reopen_count: integer('reopen_count').notNull().default(0),
     parent_case_id: uuid('parent_case_id'), // for merged/child cases
-    channel: text('channel'), // voice | whatsapp | web | kiosk | mobile | social | email
+    channel: text('channel'), // voice_inbound | whatsapp | web | kiosk | mobile | walk_in | email
     source_ref: text('source_ref'), // external reference id
     config_version_id: uuid('config_version_id'), // snapshot of subtype config at registration
     created_at: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),

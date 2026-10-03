@@ -52,7 +52,14 @@ const SETTINGS: Setting[] = [
   { key: 'case.auto_close_days', value: 15, description: 'Auto-close after resolution (days)', group: 'case_rules' },
   { key: 'messaging.quiet_hours_start', value: '22:00', description: 'Quiet hours start', group: 'messaging' },
   { key: 'messaging.quiet_hours_end', value: '07:00', description: 'Quiet hours end', group: 'messaging' },
-  { key: 'messaging.sms_sender_id', value: 'SMDHAN', description: 'SMS sender ID', group: 'messaging' },
+  { key: 'messaging.primary_channel', value: 'whatsapp', description: 'Primary notification channel', group: 'messaging' },
+  { key: 'messaging.sms_fallback', value: true, description: 'SMS fallback (OTP only)', group: 'messaging' },
+  { key: 'messaging.whatsapp_business_id', value: '', description: 'WhatsApp Business API number', group: 'messaging' },
+  { key: 'intake.phone_mode', value: 'inbound_only', description: 'Phone intake mode', group: 'intake' },
+  { key: 'intake.channels_enabled', value: 'web,whatsapp,walk_in,phone_inbound', description: 'Enabled intake channels', group: 'intake' },
+  { key: 'intake.media_compression', value: true, description: 'Auto-compress uploaded images', group: 'intake' },
+  { key: 'intake.max_image_size_kb', value: 500, description: 'Max compressed image size (KB)', group: 'intake' },
+  { key: 'intake.speech_engine', value: 'browser_native', description: 'Speech recognition engine', group: 'intake' },
   { key: 'security.staff_2fa_required', value: false, description: 'Require 2FA for staff', group: 'security' },
   { key: 'security.session_timeout_minutes', value: 30, description: 'Session timeout (minutes)', group: 'security' },
 ];
@@ -94,7 +101,8 @@ const groups = [
   { key: 'general', label: 'General', icon: 'settings' },
   { key: 'case_rules', label: 'Case Rules', icon: 'gavel' },
   { key: 'auto_assign', label: 'Auto-Assign', icon: 'assignment_ind' },
-  { key: 'messaging', label: 'Messaging', icon: 'sms' },
+  { key: 'intake', label: 'Intake Channels', icon: 'call_received' },
+  { key: 'messaging', label: 'Notifications', icon: 'notifications' },
   { key: 'security', label: 'Security', icon: 'shield' },
   { key: 'permissions', label: 'Permissions', icon: 'admin_panel_settings' },
   { key: 'users', label: 'Users & Tracking', icon: 'group' },
@@ -168,7 +176,7 @@ export function SettingsPage() {
           </div>
 
           {/* Standard settings groups */}
-          {(activeGroup === 'general' || activeGroup === 'case_rules' || activeGroup === 'messaging' || activeGroup === 'security') && (
+          {(activeGroup === 'general' || activeGroup === 'case_rules' || activeGroup === 'messaging' || activeGroup === 'intake' || activeGroup === 'security') && (
             <div className="divide-y divide-cream">
               {filtered.map((s) => (
                 <div key={s.key} className="flex items-center justify-between px-6 py-4">

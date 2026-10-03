@@ -4,18 +4,9 @@ import { useLang } from '../lang';
 import { categories, locations } from '../data/mockData';
 import { saveComplaint, detectDepartmentFromTranscript, getCitizenUser } from '../store';
 import { MapPicker } from '../components/MapPicker';
+import { speak, compressImage } from '../media';
 
 type Step = 'voice_record' | 'category' | 'subtype' | 'location' | 'media' | 'review' | 'success';
-
-function speak(text: string) {
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'hi-IN';
-    u.rate = 0.92;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch { /* noop */ }
-}
 
 export function RegisterPage() {
   const { t } = useLang();
@@ -179,10 +170,16 @@ export function RegisterPage() {
     input.type = 'file';
     input.accept = 'image/*';
     input.capture = 'environment';
-    input.onchange = () => {
+    input.onchange = async () => {
       if (input.files?.[0]) {
-        const url = URL.createObjectURL(input.files[0]);
-        setPhotos(prev => [...prev, url]);
+        try {
+          const compressed = await compressImage(input.files[0]);
+          const url = URL.createObjectURL(compressed);
+          setPhotos(prev => [...prev, url]);
+        } catch {
+          const url = URL.createObjectURL(input.files[0]);
+          setPhotos(prev => [...prev, url]);
+        }
       }
     };
     input.click();

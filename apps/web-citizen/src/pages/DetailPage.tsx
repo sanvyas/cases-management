@@ -3,16 +3,7 @@ import { useParams, Link } from '@tanstack/react-router';
 import { useLang } from '../lang';
 import { mockComplaints, categories, locations, STEPS, STATUS_STYLES } from '../data/mockData';
 import { getComplaintById, type StoredComplaint } from '../store';
-
-function speak(text: string) {
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'hi-IN';
-    u.rate = 0.92;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch { /* noop */ }
-}
+import { speak } from '../media';
 
 function statusToStep(status: string): number {
   switch (status) {

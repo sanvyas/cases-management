@@ -10,7 +10,7 @@ export type CaseStatus =
 
 export type CasePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
-export type CaseChannel = 'PHONE' | 'WHATSAPP' | 'WALK_IN' | 'WEB' | 'MOBILE' | 'SOCIAL_MEDIA';
+export type CaseChannel = 'PHONE' | 'PHONE_INBOUND' | 'WHATSAPP' | 'WALK_IN' | 'WEB' | 'MOBILE';
 
 export interface Case {
   id: string;

@@ -3,6 +3,7 @@ import { useParams, Link } from '@tanstack/react-router';
 import { mockCases, mockTimeline, STATUS_CONFIG, PRIORITY_CONFIG, staffMembers } from '../data/mockData';
 import { getCitizenCasesAsStaffCases, updateStoredComplaint } from '../store';
 import { useAuth } from '../auth';
+import { compressImage } from '../media';
 import type { Case, CaseStatus } from '../types';
 
 interface Comment {
@@ -148,14 +149,18 @@ export function CaseDetailPage() {
     setActionDone(`status_${newStatus.toLowerCase()}`);
   }
 
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files) return;
     const newUploads: UploadedMedia[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i]!;
       const isVideo = file.type.startsWith('video/');
-      const sizeKB = Math.round(file.size / 1024);
+      let blob: Blob = file;
+      if (!isVideo && file.type.startsWith('image/')) {
+        try { blob = await compressImage(file); } catch { blob = file; }
+      }
+      const sizeKB = Math.round(blob.size / 1024);
       const sizeStr = sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB} KB`;
       newUploads.push({
         id: `upload-${Date.now()}-${i}`,
@@ -163,7 +168,7 @@ export function CaseDetailPage() {
         type: isVideo ? 'video' : 'image',
         size: sizeStr,
         timestamp: new Date().toISOString(),
-        url: URL.createObjectURL(file),
+        url: URL.createObjectURL(blob),
       });
     }
     setUploads(prev => [...prev, ...newUploads]);

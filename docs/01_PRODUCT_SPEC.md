@@ -41,8 +41,7 @@ Every module is a licensable unit. `core` is always on.
 | `sms` | SMS | Outbound notifications and status |
 | `sms_inbound` | SMS short codes | Inbound short-code complaints and `STS` status |
 | `email_channel` | E-mail inbox | Mailbox ingestion, e-mail control room |
-| `social_inbox` | Social media inbox | Twitter/X, Facebook, Instagram control room |
-| `missed_call` | Missed call | Missed call → automated callback (voice AI or agent) |
+| `voice_inbound` | Voice inbound | Process existing complaint call recordings into cases |
 | `kiosk` | Kiosk mode | Touch kiosk / CSC assisted mode, token slips |
 | `agent_console` | Call centre | Agent desktop, enquiries, tasks, CTI, live chat |
 | `qc` | Quality check | QC tasks, scoring, AI auto-scoring of calls |
