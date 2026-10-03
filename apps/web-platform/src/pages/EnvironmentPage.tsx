@@ -1,14 +1,13 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   TENANTS,
-  TENANT_CONFIGS,
-  getDefaultConfig,
   getUsageData,
   getCostBreakdown,
   MODULE_LABELS,
   STATUS_STYLES,
 } from '../data/mockData';
-import { deployConfig } from '../platformConfig';
+import { deployConfig, getTenantConfig, saveTenantConfig, addAuditEntry, addConfigChangeEntries } from '../platformConfig';
+import { useAuth } from '../auth';
 import type { EnvironmentConfig } from '../types';
 
 interface Props {
@@ -598,13 +597,15 @@ function SectionHeader({ title, icon }: { title: string; icon: string }) {
 // ── Main Component ──────────────────────────────────────────────────
 
 export function EnvironmentPage({ envId, onBack }: Props) {
+  const { user } = useAuth();
   const tenant = TENANTS.find(t => t.id === envId);
   const [activeTab, setActiveTab] = useState('overview');
   const [config, setConfig] = useState<EnvironmentConfig>(
-    () => TENANT_CONFIGS[envId] || getDefaultConfig()
+    () => getTenantConfig(envId)
   );
   const [saved, setSaved] = useState(false);
   const [deployMessage, setDeployMessage] = useState('');
+  const prevConfigRef = useRef<EnvironmentConfig>(config);
 
   const usage = useMemo(() => getUsageData(envId), [envId]);
   const costs = useMemo(() => getCostBreakdown(envId), [envId]);
@@ -622,55 +623,156 @@ export function EnvironmentPage({ envId, onBack }: Props) {
   }
 
   const st = STATUS_STYLES[tenant.status]!;
+  const auditUser = { id: user?.id || 'unknown', name: user?.name || 'Unknown' };
+  const auditTenant = { id: tenant.id, name: tenant.name };
+
+  function diffAndLog(section: string, oldObj: Record<string, unknown>, newObj: Record<string, unknown>) {
+    const changes: Array<{ field: string; oldValue: string; newValue: string }> = [];
+    for (const key of Object.keys(newObj)) {
+      const ov = oldObj[key];
+      const nv = newObj[key];
+      if (JSON.stringify(ov) !== JSON.stringify(nv)) {
+        changes.push({ field: key, oldValue: String(ov ?? ''), newValue: String(nv ?? '') });
+      }
+    }
+    if (changes.length > 0) {
+      addConfigChangeEntries(auditUser, auditTenant, section, changes);
+    }
+  }
+
+  function persistConfig(next: EnvironmentConfig) {
+    saveTenantConfig(envId, next);
+  }
 
   function handleSave() {
     if (!tenant) return;
+    diffAndLog('Deploy', { status: 'pending' }, { status: 'deployed' });
+    addAuditEntry({
+      userId: auditUser.id,
+      userName: auditUser.name,
+      tenantId: auditTenant.id,
+      tenantName: auditTenant.name,
+      action: 'deploy',
+      section: 'Deployment',
+      field: 'Full Config',
+      oldValue: '',
+      newValue: `Deployed to ${tenant.name}`,
+    });
     deployConfig(tenant, config);
+    prevConfigRef.current = config;
     setSaved(true);
     setDeployMessage(`Deployed to ${tenant.name}. Staff and Citizen apps will reflect these changes.`);
     setTimeout(() => { setSaved(false); setDeployMessage(''); }, 4000);
   }
 
   function updateCloud<K extends keyof EnvironmentConfig['cloud']>(key: K, value: EnvironmentConfig['cloud'][K]) {
-    setConfig(c => ({ ...c, cloud: { ...c.cloud, [key]: value } }));
+    setConfig(c => {
+      const next = { ...c, cloud: { ...c.cloud, [key]: value } };
+      addConfigChangeEntries(auditUser, auditTenant, 'Cloud & Infra', [
+        { field: key, oldValue: String(c.cloud[key]), newValue: String(value) },
+      ]);
+      persistConfig(next);
+      return next;
+    });
   }
 
   function updateAI<K extends keyof EnvironmentConfig['ai']>(key: K, value: EnvironmentConfig['ai'][K]) {
-    setConfig(c => ({ ...c, ai: { ...c.ai, [key]: value } }));
+    setConfig(c => {
+      const next = { ...c, ai: { ...c.ai, [key]: value } };
+      addConfigChangeEntries(auditUser, auditTenant, 'AI & Voice', [
+        { field: key, oldValue: String(c.ai[key]), newValue: String(value) },
+      ]);
+      persistConfig(next);
+      return next;
+    });
   }
 
   function updateComms<K extends keyof EnvironmentConfig['communications']>(key: K, value: EnvironmentConfig['communications'][K]) {
-    setConfig(c => ({ ...c, communications: { ...c.communications, [key]: value } }));
+    setConfig(c => {
+      const next = { ...c, communications: { ...c.communications, [key]: value } };
+      addConfigChangeEntries(auditUser, auditTenant, 'Communications', [
+        { field: key, oldValue: String(c.communications[key]), newValue: String(value) },
+      ]);
+      persistConfig(next);
+      return next;
+    });
   }
 
   function toggleModule(mod: string) {
-    setConfig(c => ({
-      ...c,
-      features: {
-        ...c.features,
-        modules: { ...c.features.modules, [mod]: !c.features.modules[mod] },
-      },
-    }));
+    setConfig(c => {
+      const wasEnabled = c.features.modules[mod];
+      const next = {
+        ...c,
+        features: {
+          ...c.features,
+          modules: { ...c.features.modules, [mod]: !wasEnabled },
+        },
+      };
+      addAuditEntry({
+        userId: auditUser.id,
+        userName: auditUser.name,
+        tenantId: auditTenant.id,
+        tenantName: auditTenant.name,
+        action: 'module_toggle',
+        section: 'Features & Modules',
+        field: mod,
+        oldValue: wasEnabled ? 'Enabled' : 'Disabled',
+        newValue: wasEnabled ? 'Disabled' : 'Enabled',
+      });
+      persistConfig(next);
+      return next;
+    });
   }
 
   function toggleRole(roleKey: string) {
-    setConfig(c => ({
-      ...c,
-      features: {
-        ...c.features,
-        roles: c.features.roles.map(r =>
-          r.key === roleKey ? { ...r, enabled: !r.enabled } : r
-        ),
-      },
-    }));
+    setConfig(c => {
+      const role = c.features.roles.find(r => r.key === roleKey);
+      const wasEnabled = role?.enabled ?? false;
+      const next = {
+        ...c,
+        features: {
+          ...c.features,
+          roles: c.features.roles.map(r =>
+            r.key === roleKey ? { ...r, enabled: !r.enabled } : r
+          ),
+        },
+      };
+      addAuditEntry({
+        userId: auditUser.id,
+        userName: auditUser.name,
+        tenantId: auditTenant.id,
+        tenantName: auditTenant.name,
+        action: 'role_toggle',
+        section: 'Roles & Permissions',
+        field: role?.name || roleKey,
+        oldValue: wasEnabled ? 'Enabled' : 'Disabled',
+        newValue: wasEnabled ? 'Disabled' : 'Enabled',
+      });
+      persistConfig(next);
+      return next;
+    });
   }
 
   function updateSecurity<K extends keyof EnvironmentConfig['security']>(key: K, value: EnvironmentConfig['security'][K]) {
-    setConfig(c => ({ ...c, security: { ...c.security, [key]: value } }));
+    setConfig(c => {
+      const next = { ...c, security: { ...c.security, [key]: value } };
+      addConfigChangeEntries(auditUser, auditTenant, 'Security', [
+        { field: key, oldValue: String(c.security[key]), newValue: String(value) },
+      ]);
+      persistConfig(next);
+      return next;
+    });
   }
 
   function updateBranding<K extends keyof EnvironmentConfig['branding']>(key: K, value: EnvironmentConfig['branding'][K]) {
-    setConfig(c => ({ ...c, branding: { ...c.branding, [key]: value } }));
+    setConfig(c => {
+      const next = { ...c, branding: { ...c.branding, [key]: value } };
+      addConfigChangeEntries(auditUser, auditTenant, 'Branding', [
+        { field: key, oldValue: String(c.branding[key]), newValue: String(value) },
+      ]);
+      persistConfig(next);
+      return next;
+    });
   }
 
   const totalUsage = usage.reduce((s, d) => s + d.cases, 0);
@@ -850,17 +952,24 @@ export function EnvironmentPage({ envId, onBack }: Props) {
                   const instances = getInstancesForProvider(v);
                   const dbt = DB_TYPES[v] || DB_TYPES['AWS']!;
                   const dbs = DB_SIZES[v] || DB_SIZES['AWS']!;
-                  setConfig(c => ({
-                    ...c,
-                    cloud: {
-                      ...c.cloud,
-                      provider: v,
-                      region: regions[0]?.value || c.cloud.region,
-                      instanceType: instances[0]?.value || c.cloud.instanceType,
-                      dbType: dbt[0]?.value || c.cloud.dbType,
-                      dbSize: dbs[0]?.value || c.cloud.dbSize,
-                    },
-                  }));
+                  setConfig(c => {
+                    const next = {
+                      ...c,
+                      cloud: {
+                        ...c.cloud,
+                        provider: v,
+                        region: regions[0]?.value || c.cloud.region,
+                        instanceType: instances[0]?.value || c.cloud.instanceType,
+                        dbType: dbt[0]?.value || c.cloud.dbType,
+                        dbSize: dbs[0]?.value || c.cloud.dbSize,
+                      },
+                    };
+                    addConfigChangeEntries(auditUser, auditTenant, 'Cloud & Infra', [
+                      { field: 'provider', oldValue: c.cloud.provider, newValue: v },
+                    ]);
+                    persistConfig(next);
+                    return next;
+                  });
                 }}
               />
               <SelectField label="Region" value={config.cloud.region} options={cloudRegions} onChange={v => updateCloud('region', v)} hint="Data residency region" />
