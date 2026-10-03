@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useLang } from '../lang';
-import { categories, locations, TENANT } from '../data/mockData';
+import { categories, locations } from '../data/mockData';
+import { saveComplaint, detectDepartmentFromTranscript, getCitizenUser } from '../store';
+import { MapPicker } from '../components/MapPicker';
 
 type Step = 'voice_record' | 'category' | 'subtype' | 'location' | 'media' | 'review' | 'success';
 
@@ -41,6 +43,13 @@ export function RegisterPage() {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [transcript, setTranscript] = useState('');
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [detectedDept, setDetectedDept] = useState('');
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  const [showMap, setShowMap] = useState(false);
+
   useEffect(() => {
     if (search.category === '__voice__') {
       setStep('voice_record');
@@ -58,6 +67,9 @@ export function RegisterPage() {
       if (timerRef.current) clearInterval(timerRef.current);
       if (mediaRecorderRef.current?.state === 'recording') {
         mediaRecorderRef.current.stop();
+      }
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch { /* noop */ }
       }
     };
   }, []);
@@ -79,6 +91,55 @@ export function RegisterPage() {
     else setStep(flowSteps[idx - 1]!);
   }, [step, navigate, flowSteps]);
 
+  function startTranscription() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'hi-IN';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognitionRef.current = recognition;
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let final = '';
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i]!.isFinal) {
+          final += event.results[i]![0]!.transcript + ' ';
+        }
+      }
+      if (final.trim()) {
+        setTranscript(final.trim());
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsTranscribing(false);
+    };
+
+    recognition.onend = () => {
+      setIsTranscribing(false);
+    };
+
+    setIsTranscribing(true);
+    recognition.start();
+  }
+
+  function stopTranscription() {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch { /* noop */ }
+    }
+    setIsTranscribing(false);
+
+    if (transcript) {
+      const match = detectDepartmentFromTranscript(transcript);
+      if (match && match.categoryIndex >= 0) {
+        setCatIndex(match.categoryIndex);
+        setDetectedDept(match.department);
+      }
+    }
+  }
+
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -91,12 +152,16 @@ export function RegisterPage() {
         setVoiceBlob(blob);
         setVoiceUrl(URL.createObjectURL(blob));
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        stopTranscription();
       };
       recorder.start();
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setRecordingTime(0);
+      setTranscript('');
+      setDetectedDept('');
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+      startTranscription();
     } catch {
       speak('माइक नहीं मिला। कृपया अनुमति दें।');
     }
@@ -137,7 +202,21 @@ export function RegisterPage() {
   }
 
   function handleSubmit() {
-    const num = `${TENANT.prefix}-26-${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
+    const citizen = getCitizenUser();
+    const num = saveComplaint({
+      catIndex,
+      subIndex,
+      locIndex,
+      gpsCoords,
+      gpsAddress,
+      photoCount: photos.length,
+      hasVideo: !!videoUrl,
+      hasVoice: !!voiceBlob,
+      voiceTranscript: transcript,
+      description: otherText || transcript || '',
+      citizenPhone: citizen?.phone || '',
+      citizenName: citizen?.name || '',
+    });
     setCaseNumber(num);
     setStep('success');
   }
@@ -159,6 +238,13 @@ export function RegisterPage() {
     } else {
       setGpsStatus('error');
     }
+  }
+
+  function handleMapSelect(lat: number, lng: number, address: string) {
+    setGpsCoords({ lat, lng });
+    setGpsAddress(address || `${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E`);
+    setGpsStatus('done');
+    setShowMap(false);
   }
 
   function formatTime(sec: number) {
@@ -224,6 +310,15 @@ export function RegisterPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-cream">
+      {showMap && (
+        <MapPicker
+          initialLat={gpsCoords?.lat}
+          initialLng={gpsCoords?.lng}
+          onSelect={handleMapSelect}
+          onClose={() => setShowMap(false)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-2 pb-3">
         <button
@@ -294,6 +389,12 @@ export function RegisterPage() {
                         <span className="text-2xl font-bold text-dark" style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTime(recordingTime)}</span>
                       </div>
                       <div className="text-sm text-dark-muted">{t('voice.recording')}</div>
+                      {isTranscribing && transcript && (
+                        <div className="mt-2 w-full rounded-xl bg-cream p-3 text-sm text-dark">
+                          <div className="text-xs font-bold text-dark-muted mb-1">{t('voice.transcript')}</div>
+                          {transcript}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -310,8 +411,23 @@ export function RegisterPage() {
                     </span>
                     <div className="text-lg font-bold text-success">{t('voice.recorded')}</div>
                     <audio controls src={voiceUrl} className="w-full" />
+
+                    {/* Transcript */}
+                    {transcript && (
+                      <div className="w-full rounded-xl bg-cream p-4">
+                        <div className="text-xs font-bold text-dark-muted mb-1">{t('voice.transcript')}</div>
+                        <div className="text-base text-dark">"{transcript}"</div>
+                        {detectedDept && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="material-symbols-rounded text-lg text-success">auto_awesome</span>
+                            <span className="text-sm font-bold text-success">{t('voice.detected')}: {detectedDept}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <button
-                      onClick={() => { setVoiceBlob(null); setVoiceUrl(null); setRecordingTime(0); }}
+                      onClick={() => { setVoiceBlob(null); setVoiceUrl(null); setRecordingTime(0); setTranscript(''); setDetectedDept(''); }}
                       className="h-12 px-6 rounded-2xl border-2 border-cream-darker bg-white text-dark font-bold text-sm flex items-center gap-2"
                     >
                       <span className="material-symbols-rounded text-xl">refresh</span>
@@ -448,7 +564,7 @@ export function RegisterPage() {
                   </span>
                   <div className="flex-1 min-w-0">
                     <div className="text-base font-bold text-success">GPS {t('loc.detected')}</div>
-                    <div className="text-sm text-dark-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>{gpsAddress}</div>
+                    <div className="text-sm text-dark-muted truncate" style={{ fontVariantNumeric: 'tabular-nums' }}>{gpsAddress}</div>
                   </div>
                   <button
                     onClick={() => { setGpsStatus('idle'); setGpsCoords(null); setGpsAddress(''); }}
@@ -471,6 +587,19 @@ export function RegisterPage() {
                 </div>
               )}
             </div>
+
+            {/* Map picker button */}
+            <button
+              onClick={() => setShowMap(true)}
+              className="h-16 rounded-2xl border-2 border-cream-darker bg-white flex items-center justify-center gap-3"
+              style={{ boxShadow: '0 1px 0 #EADFD2' }}
+            >
+              <span className="material-symbols-rounded text-3xl text-primary">map</span>
+              <div className="text-left">
+                <div className="text-base font-bold text-dark">{t('map.title')}</div>
+                <div className="text-xs text-dark-muted">{t('map.titleSub')}</div>
+              </div>
+            </button>
 
             {/* Manual location picker */}
             <div className="text-sm font-bold text-dark-muted px-1">{t('loc.orSelect')}</div>
@@ -563,14 +692,22 @@ export function RegisterPage() {
             <div className="rounded-3xl bg-white p-5 flex flex-col gap-4" style={{ boxShadow: '0 1px 0 #EADFD2' }}>
               {/* Voice recording */}
               {voiceUrl && (
-                <div className="flex items-center gap-3">
-                  <span className="w-12 h-12 rounded-2xl bg-primary-light flex items-center justify-center flex-none">
-                    <span className="material-symbols-rounded text-2xl text-primary">mic</span>
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-base font-bold">{t('voice.recorded')}</div>
-                    <audio controls src={voiceUrl} className="w-full h-8 mt-1" />
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-3">
+                    <span className="w-12 h-12 rounded-2xl bg-primary-light flex items-center justify-center flex-none">
+                      <span className="material-symbols-rounded text-2xl text-primary">mic</span>
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-base font-bold">{t('voice.recorded')}</div>
+                      <audio controls src={voiceUrl} className="w-full h-8 mt-1" />
+                    </div>
                   </div>
+                  {transcript && (
+                    <div className="rounded-xl bg-cream p-3 text-sm">
+                      <div className="text-xs font-bold text-dark-muted">{t('voice.transcript')}</div>
+                      <div className="text-dark">"{transcript}"</div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -602,11 +739,11 @@ export function RegisterPage() {
               {/* Location */}
               <div className="flex gap-3 items-center">
                 <span className="material-symbols-rounded text-2xl text-primary">location_on</span>
-                <div className="leading-tight">
+                <div className="leading-tight min-w-0 flex-1">
                   {gpsCoords ? (
                     <>
                       <div className="text-lg font-bold">GPS {t('loc.detected')}</div>
-                      <div className="text-sm text-dark-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>{gpsAddress}</div>
+                      <div className="text-sm text-dark-muted truncate" style={{ fontVariantNumeric: 'tabular-nums' }}>{gpsAddress}</div>
                     </>
                   ) : (
                     <>

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useParams, Link } from '@tanstack/react-router';
 import { mockCases, mockTimeline, STATUS_CONFIG, PRIORITY_CONFIG, staffMembers } from '../data/mockData';
-import type { CaseStatus } from '../types';
+import { getCitizenCasesAsStaffCases } from '../store';
+import type { Case, CaseStatus } from '../types';
 
 interface Comment {
   id: string;
@@ -10,9 +11,15 @@ interface Comment {
   timestamp: string;
 }
 
+function findCase(id: string): Case | undefined {
+  const mock = mockCases.find((c) => c.id === id);
+  if (mock) return mock;
+  return getCitizenCasesAsStaffCases().find((c) => c.id === id);
+}
+
 export function CaseDetailPage() {
   const { caseId } = useParams({ strict: false }) as { caseId: string };
-  const [caseData, setCaseData] = useState(() => mockCases.find((c) => c.id === caseId));
+  const [caseData, setCaseData] = useState(() => findCase(caseId));
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState(false);

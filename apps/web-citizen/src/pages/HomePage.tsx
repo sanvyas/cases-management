@@ -1,23 +1,67 @@
-import { Link } from '@tanstack/react-router';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useLang } from '../lang';
-import { categories, mockComplaints, locations, STATUS_STYLES } from '../data/mockData';
+import { categories, STATUS_STYLES } from '../data/mockData';
+import { getComplaints, getCitizenUser, clearCitizenUser, type StoredComplaint } from '../store';
+
+function statusToStep(status: string): number {
+  switch (status) {
+    case 'REGISTERED': return 0;
+    case 'ASSIGNED': return 1;
+    case 'IN_PROGRESS': return 1;
+    case 'ATR_SUBMITTED': return 2;
+    case 'RESOLVED': return 2;
+    case 'CLOSED': return 3;
+    default: return 0;
+  }
+}
 
 export function HomePage() {
   const { t } = useLang();
-  const latest = mockComplaints[0];
-  const latestCat = latest ? categories[latest.catIndex] : null;
-  const latestSub = latestCat && latest ? latestCat.subs[latest.subIndex] : null;
-  const latestLoc = latest ? locations[latest.locIndex] : null;
-  const latestStatus = latest ? STATUS_STYLES[latest.step] : null;
+  const navigate = useNavigate();
+  const [latestComplaint, setLatestComplaint] = useState<StoredComplaint | null>(null);
+  const [complaintCount, setComplaintCount] = useState(0);
+  const citizen = getCitizenUser();
   const previewCats = categories.slice(0, 5);
+
+  useEffect(() => {
+    const stored = getComplaints();
+    setComplaintCount(stored.length);
+    if (stored.length > 0) {
+      setLatestComplaint(stored[0]!);
+    }
+  }, []);
+
+  function handleLogout() {
+    clearCitizenUser();
+    void navigate({ to: '/' });
+  }
+
+  const latestStatus = latestComplaint ? STATUS_STYLES[statusToStep(latestComplaint.status)] : null;
 
   return (
     <div className="flex min-h-dvh flex-col bg-cream">
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2">
-        {/* Header */}
-        <div className="mb-5">
-          <h1 className="text-3xl font-extrabold leading-tight text-dark">{t('app.title')}</h1>
-          <p className="text-sm text-dark-muted">{t('app.subtitle')}</p>
+        {/* Header with user info */}
+        <div className="mb-5 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-extrabold leading-tight text-dark">{t('app.title')}</h1>
+            <p className="text-sm text-dark-muted">{t('app.subtitle')}</p>
+            {citizen && (
+              <p className="text-sm font-bold text-primary mt-1">
+                <span className="material-symbols-rounded text-sm align-middle mr-1">person</span>
+                {citizen.name}
+              </p>
+            )}
+          </div>
+          {citizen && (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1 h-9 px-3 rounded-xl bg-cream-dark text-dark-muted text-sm font-bold"
+            >
+              <span className="material-symbols-rounded text-lg">logout</span>
+            </button>
+          )}
         </div>
 
         {/* Two big choice buttons */}
@@ -89,26 +133,28 @@ export function HomePage() {
           </div>
         </div>
 
-        {/* Latest complaint card */}
-        {latest && latestCat && latestSub && latestLoc && latestStatus && (
+        {/* Latest complaint card from stored data */}
+        {latestComplaint && latestStatus && (
           <Link
             to="/complaint/$id"
-            params={{ id: latest.id }}
+            params={{ id: latestComplaint.id }}
             className="block rounded-3xl bg-white p-4 mb-3"
             style={{ boxShadow: '0 1px 0 #EADFD2' }}
           >
             <div className="flex items-center gap-3 mb-3">
               <span
                 className="w-12 h-12 rounded-2xl flex items-center justify-center flex-none"
-                style={{ background: latestCat.bg }}
+                style={{ background: latestComplaint.categoryBg }}
               >
-                <span className="material-symbols-rounded text-2xl" style={{ color: latestCat.fg }}>
-                  {latestSub.icon}
+                <span className="material-symbols-rounded text-2xl" style={{ color: latestComplaint.categoryFg }}>
+                  {latestComplaint.subtypeIcon}
                 </span>
               </span>
               <div className="flex-1 min-w-0">
-                <div className="text-lg font-bold leading-tight text-dark">{latestSub.hi}</div>
-                <div className="text-xs text-dark-muted">{latest.caseNumber} · {latest.date} · {latestLoc.hi}</div>
+                <div className="text-lg font-bold leading-tight text-dark">{latestComplaint.subtypeHi}</div>
+                <div className="text-xs text-dark-muted">
+                  {latestComplaint.caseNumber} · {new Date(latestComplaint.registeredAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} · {latestComplaint.locationHi}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -121,6 +167,15 @@ export function HomePage() {
                 <span className="text-xs font-semibold ml-1">· {latestStatus.en}</span>
               </span>
             </div>
+          </Link>
+        )}
+
+        {complaintCount > 1 && (
+          <Link
+            to="/track"
+            className="block rounded-2xl bg-cream-dark p-3 text-center text-sm font-bold text-dark mb-3"
+          >
+            {t('home.track')} ({complaintCount}) →
           </Link>
         )}
       </div>

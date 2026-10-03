@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useLang } from '../lang';
+import { getCitizenUser } from '../store';
 import type { Lang } from '../types';
 
 const LANGS: { code: Lang; label: string; sub: string }[] = [
@@ -25,7 +26,8 @@ export function LangPickerPage() {
 
   function go() {
     setLanguage(selected);
-    void navigate({ to: '/home' });
+    const user = getCitizenUser();
+    void navigate({ to: user ? '/home' : '/login' });
   }
 
   return (

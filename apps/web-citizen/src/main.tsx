@@ -6,6 +6,7 @@ import {
   createRootRoute,
   RouterProvider,
   Outlet,
+  Navigate,
 } from '@tanstack/react-router';
 import { LangProvider } from './lang';
 import { HomePage } from './pages/HomePage';
@@ -13,6 +14,8 @@ import { RegisterPage } from './pages/RegisterPage';
 import { TrackPage } from './pages/TrackPage';
 import { DetailPage } from './pages/DetailPage';
 import { LangPickerPage } from './pages/LangPickerPage';
+import { LoginPage } from './pages/LoginPage';
+import { getCitizenUser } from './store';
 import './index.css';
 
 function CitizenLayout() {
@@ -23,6 +26,14 @@ function CitizenLayout() {
   );
 }
 
+function AuthGuard() {
+  const user = getCitizenUser();
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+  return <Outlet />;
+}
+
 const rootRoute = createRootRoute({ component: CitizenLayout });
 
 const langPickerRoute = createRoute({
@@ -31,14 +42,26 @@ const langPickerRoute = createRoute({
   component: LangPickerPage,
 });
 
-const homeRoute = createRoute({
+const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginPage,
+});
+
+const authLayout = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'auth',
+  component: AuthGuard,
+});
+
+const homeRoute = createRoute({
+  getParentRoute: () => authLayout,
   path: '/home',
   component: HomePage,
 });
 
 const registerRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => authLayout,
   path: '/register',
   component: RegisterPage,
   validateSearch: (search: Record<string, unknown>) => ({
@@ -47,23 +70,21 @@ const registerRoute = createRoute({
 });
 
 const trackRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => authLayout,
   path: '/track',
   component: TrackPage,
 });
 
 const detailRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => authLayout,
   path: '/complaint/$id',
   component: DetailPage,
 });
 
 const routeTree = rootRoute.addChildren([
   langPickerRoute,
-  homeRoute,
-  registerRoute,
-  trackRoute,
-  detailRoute,
+  loginRoute,
+  authLayout.addChildren([homeRoute, registerRoute, trackRoute, detailRoute]),
 ]);
 
 const router = createRouter({ routeTree, basepath: import.meta.env.BASE_URL });
