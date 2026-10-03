@@ -1,0 +1,26 @@
+{
+  "name": "@samadhan/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Use EAS Build for mobile'",
+    "dev": "expo start",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@samadhan/domain": "workspace:*",
+    "@samadhan/contracts": "workspace:*",
+    "@samadhan/i18n": "workspace:*",
+    "react": "^18.3.0",
+    "react-native": "^0.79.0",
+    "expo": "^53.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.0",
+    "typescript": "^5.8.0",
+    "@types/react": "^18.3.0"
+  }
+}

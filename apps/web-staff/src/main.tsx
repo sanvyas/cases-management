@@ -1,0 +1,200 @@
+import { StrictMode, useMemo } from 'react';
+import { createRoot } from 'react-dom/client';
+import {
+  createRouter,
+  createRoute,
+  createRootRoute,
+  RouterProvider,
+  Outlet,
+  Link,
+  useNavigate,
+} from '@tanstack/react-router';
+import { AuthProvider, useAuth } from './auth';
+import { getDeployedConfig } from './platformConfig';
+import { DashboardPage } from './pages/DashboardPage';
+import { CasesPage } from './pages/CasesPage';
+import { CaseDetailPage } from './pages/CaseDetailPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { LoginPage } from './pages/LoginPage';
+import './index.css';
+
+function AuthGuard() {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  if (!isAuthenticated) {
+    void navigate({ to: '/login' });
+    return null;
+  }
+  return <Outlet />;
+}
+
+function OfficerLayout() {
+  const { user, logout, hasPermission } = useAuth();
+  const navigate = useNavigate();
+  const deployed = useMemo(() => getDeployedConfig(), []);
+  const tenantName = deployed?.tenant.name || user?.tenantName || 'Samadhan';
+  const primaryColor = deployed?.config.branding.primaryColor || '#C24E33';
+  const headerText = deployed?.config.branding.headerText || '';
+  const planName = deployed?.tenant.planName || '';
+
+  const allNavItems = [
+    { to: '/' as const, label: 'Dashboard', icon: 'dashboard', permission: 'dashboard.view' },
+    { to: '/cases' as const, label: 'Cases', icon: 'folder_open', permission: 'cases.view' },
+    { to: '/settings' as const, label: 'Settings', icon: 'settings', permission: 'settings.view' },
+  ];
+
+  const navItems = allNavItems.filter(item => hasPermission(item.permission));
+
+  function handleLogout() {
+    logout();
+    void navigate({ to: '/login' });
+  }
+
+  return (
+    <div className="flex h-screen bg-cream" style={{ fontFamily: "'Mukta', sans-serif" }}>
+      <aside className="flex w-64 flex-col bg-dark text-white">
+        <div className="border-b border-white/10 px-6 py-5">
+          <h1 className="text-xl font-extrabold tracking-tight text-white">समाधान</h1>
+          <p className="text-xs text-white/50">Samadhan · Officer Console</p>
+        </div>
+        <nav className="mt-4 flex-1 space-y-1 px-3">
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+              activeOptions={{ exact: item.to === '/' }}
+              activeProps={{ style: { background: primaryColor, color: '#fff' } }}
+            >
+              <span className="material-symbols-rounded text-xl">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="border-t border-white/10 p-3">
+          <div className="flex items-center gap-3 px-3 py-2 mb-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: primaryColor }}>
+              {user?.name.split(' ').map((n) => n[0]).join('')}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-white truncate">{user?.name}</p>
+              <p className="text-xs text-white/50">{user?.roleLabel}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <span className="material-symbols-rounded text-xl">logout</span>
+            Logout
+          </button>
+        </div>
+      </aside>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <header className="flex h-14 items-center justify-between border-b border-cream-darker bg-white px-6">
+          <div className="flex items-center gap-2 text-sm text-dark-muted">
+            <span className="material-symbols-rounded text-lg" style={{ color: primaryColor }}>apartment</span>
+            <span className="font-bold text-dark">{tenantName}</span>
+            {headerText && <span className="text-xs text-dark-muted">· {headerText}</span>}
+            {planName && (
+              <span className="rounded-lg px-2 py-0.5 text-[10px] font-bold" style={{ background: '#E0F0FF', color: '#2F6690' }}>
+                {planName}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {deployed && (
+              <span className="flex items-center gap-1 text-[11px] font-bold text-success">
+                <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                Live
+              </span>
+            )}
+            <button className="relative flex h-10 w-10 items-center justify-center rounded-xl text-dark-muted hover:bg-cream-dark">
+              <span className="material-symbols-rounded text-2xl">notifications</span>
+              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-danger border-2 border-white" />
+            </button>
+          </div>
+        </header>
+        <main className="flex-1 overflow-y-auto p-6">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+}
+
+const rootRoute = createRootRoute({
+  component: () => <Outlet />,
+});
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/login',
+  component: LoginPage,
+});
+
+const authLayout = createRoute({
+  getParentRoute: () => rootRoute,
+  id: 'auth',
+  component: AuthGuard,
+});
+
+const officerLayout = createRoute({
+  getParentRoute: () => authLayout,
+  id: 'officer',
+  component: OfficerLayout,
+});
+
+const dashboardRoute = createRoute({
+  getParentRoute: () => officerLayout,
+  path: '/',
+  component: DashboardPage,
+});
+
+const casesRoute = createRoute({
+  getParentRoute: () => officerLayout,
+  path: '/cases',
+  component: CasesPage,
+});
+
+const caseDetailRoute = createRoute({
+  getParentRoute: () => officerLayout,
+  path: '/cases/$caseId',
+  component: CaseDetailPage,
+});
+
+const settingsRoute = createRoute({
+  getParentRoute: () => officerLayout,
+  path: '/settings',
+  component: SettingsPage,
+});
+
+const routeTree = rootRoute.addChildren([
+  loginRoute,
+  authLayout.addChildren([
+    officerLayout.addChildren([dashboardRoute, casesRoute, caseDetailRoute, settingsRoute]),
+  ]),
+]);
+
+const router = createRouter({ routeTree, basepath: import.meta.env.BASE_URL });
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: typeof router;
+  }
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);

@@ -1,0 +1,18 @@
+[build]
+  command = "pnpm install --frozen-lockfile && VITE_BASE_PATH=/staff/ pnpm --filter @samadhan/web-staff build && VITE_BASE_PATH=/citizen/ pnpm --filter @samadhan/web-citizen build && VITE_BASE_PATH=/platform/ pnpm --filter @samadhan/web-platform build && node scripts/netlify-combine.mjs"
+  publish = "netlify-dist"
+
+[[redirects]]
+  from = "/staff/*"
+  to = "/staff/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/citizen/*"
+  to = "/citizen/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/platform/*"
+  to = "/platform/index.html"
+  status = 200

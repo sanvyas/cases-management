@@ -1,0 +1,38 @@
+{
+  "name": "@samadhan/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@samadhan/domain": "workspace:*",
+    "@samadhan/db": "workspace:*",
+    "@samadhan/contracts": "workspace:*",
+    "@samadhan/providers": "workspace:*",
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/terminus": "^11.1.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0",
+    "zod": "^3.25.0",
+    "pino": "^9.7.0",
+    "pino-http": "^10.4.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.1.0",
+    "vitest": "^3.2.0",
+    "typescript": "^5.8.0",
+    "@types/express": "^5.0.0"
+  }
+}

@@ -136,9 +136,9 @@ Fifteen phases grouped into four releases. Each phase ends with an **acceptance 
 
 **Gate:** AT-37, AT-38 pass.
 
-## Phase 10 — Social and e-mail control rooms, integrations hub, public API
+## Phase 10 — E-mail control room, voice inbound, integrations hub, public API
 **Tasks**
-1. Social inbox (`social_inbox`): Twitter/X, Facebook and Instagram adapters (webhooks or polling), thread view with prior history, the eight actions with templates, convert to case, reply from platform, optional approval before reply (setting).
+1. Voice inbound (`voice_inbound`): process uploaded call recordings, run STT transcription to extract complaint details, auto-create cases from transcripts with department detection.
 2. E-mail channel (`email_channel`): IMAP/Graph/Gmail ingestion, threading, eight actions, outbound replies with tenant sender.
 3. Integrations hub: connector framework, credential vault, mapping UI, message log, retries, reconciliation report; built-in connectors per Product Spec §16 (generic REST/webhook plus at least two concrete reference implementations behind mocks: a state-portal two-way connector and a billing lookup connector).
 4. Public API (API keys with scopes and rate limits), outbound signed webhooks, developer docs page.
