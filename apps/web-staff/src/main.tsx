@@ -17,15 +17,28 @@ import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import './index.css';
 
-function OfficerLayout() {
-  const { user, logout } = useAuth();
+function AuthGuard() {
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const navItems = [
-    { to: '/' as const, label: 'Dashboard', icon: 'dashboard' },
-    { to: '/cases' as const, label: 'Cases', icon: 'folder_open' },
-    { to: '/settings' as const, label: 'Settings', icon: 'settings' },
+  if (!isAuthenticated) {
+    void navigate({ to: '/login' });
+    return null;
+  }
+  return <Outlet />;
+}
+
+function OfficerLayout() {
+  const { user, logout, hasPermission } = useAuth();
+  const navigate = useNavigate();
+
+  const allNavItems = [
+    { to: '/' as const, label: 'Dashboard', icon: 'dashboard', permission: 'dashboard.view' },
+    { to: '/cases' as const, label: 'Cases', icon: 'folder_open', permission: 'cases.view' },
+    { to: '/settings' as const, label: 'Settings', icon: 'settings', permission: 'settings.view' },
   ];
+
+  const navItems = allNavItems.filter(item => hasPermission(item.permission));
 
   function handleLogout() {
     logout();
@@ -102,8 +115,14 @@ const loginRoute = createRoute({
   component: LoginPage,
 });
 
-const officerLayout = createRoute({
+const authLayout = createRoute({
   getParentRoute: () => rootRoute,
+  id: 'auth',
+  component: AuthGuard,
+});
+
+const officerLayout = createRoute({
+  getParentRoute: () => authLayout,
   id: 'officer',
   component: OfficerLayout,
 });
@@ -134,7 +153,9 @@ const settingsRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  officerLayout.addChildren([dashboardRoute, casesRoute, caseDetailRoute, settingsRoute]),
+  authLayout.addChildren([
+    officerLayout.addChildren([dashboardRoute, casesRoute, caseDetailRoute, settingsRoute]),
+  ]),
 ]);
 
 const router = createRouter({ routeTree, basepath: import.meta.env.BASE_URL });

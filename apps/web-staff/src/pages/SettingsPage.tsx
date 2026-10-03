@@ -1,5 +1,36 @@
 import { useState } from 'react';
 import { staffMembers } from '../data/mockData';
+import { useAuth } from '../auth';
+
+const SETTINGS_STORAGE_KEY = 'samadhan_settings';
+
+interface TenantSettings {
+  autoAssignEnabled: boolean;
+  autoAssignRules: Array<{ department: string; assignee: string }>;
+  [key: string]: unknown;
+}
+
+function getSettings(): TenantSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as TenantSettings;
+  } catch { /* noop */ }
+  return { autoAssignEnabled: false, autoAssignRules: [] };
+}
+
+function saveSettings(settings: TenantSettings): void {
+  try {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch { /* noop */ }
+}
+
+export function getAutoAssignEnabled(): boolean {
+  return getSettings().autoAssignEnabled;
+}
+
+export function getAutoAssignRules(): Array<{ department: string; assignee: string }> {
+  return getSettings().autoAssignRules;
+}
 
 interface Setting {
   key: string;
@@ -39,6 +70,11 @@ const PERMISSIONS: Permission[] = [
   { key: 'cases.assign', label: 'Assign Cases', description: 'Assign and reassign cases to staff' },
   { key: 'cases.comment', label: 'Add Comments', description: 'Post comments on cases' },
   { key: 'cases.approve', label: 'Approve ATR', description: 'Approve or return action taken reports' },
+  { key: 'cases.status.change', label: 'Change Status', description: 'Update case status (in-progress, etc.)' },
+  { key: 'cases.media.upload', label: 'Upload Media', description: 'Upload photos and videos on cases' },
+  { key: 'cases.atr.submit', label: 'Submit ATR', description: 'Submit action taken report with evidence' },
+  { key: 'cases.escalate', label: 'Escalate Cases', description: 'Escalate cases to higher authority' },
+  { key: 'cases.register', label: 'Register Cases', description: 'Register new complaints on behalf of citizens' },
   { key: 'settings.view', label: 'View Settings', description: 'View tenant configuration' },
   { key: 'settings.edit', label: 'Edit Settings', description: 'Modify tenant settings' },
   { key: 'users.view', label: 'View Users', description: 'See staff list and activity' },
@@ -48,24 +84,56 @@ const PERMISSIONS: Permission[] = [
 ];
 
 const ROLES = [
-  { name: 'Supervising Officer', permissions: ['dashboard.view', 'cases.view', 'cases.manage', 'cases.assign', 'cases.comment', 'cases.approve', 'settings.view', 'settings.edit', 'users.view', 'users.manage', 'citizen.pii.view', 'reports.export'] },
-  { name: 'Junior Engineer', permissions: ['dashboard.view', 'cases.view', 'cases.comment'] },
-  { name: 'Sanitary Inspector', permissions: ['dashboard.view', 'cases.view', 'cases.comment'] },
-  { name: 'Data Entry Operator', permissions: ['cases.view', 'cases.comment'] },
+  { name: 'Supervising Officer', permissions: ['dashboard.view', 'cases.view', 'cases.manage', 'cases.assign', 'cases.comment', 'cases.approve', 'cases.status.change', 'cases.media.upload', 'cases.escalate', 'settings.view', 'settings.edit', 'users.view', 'users.manage', 'citizen.pii.view', 'reports.export'] },
+  { name: 'Junior Engineer (Field)', permissions: ['dashboard.view', 'cases.view', 'cases.comment', 'cases.status.change', 'cases.media.upload', 'cases.atr.submit'] },
+  { name: 'Sanitary Inspector', permissions: ['dashboard.view', 'cases.view', 'cases.comment', 'cases.status.change', 'cases.media.upload', 'cases.atr.submit'] },
+  { name: 'Data Entry Operator', permissions: ['cases.view', 'cases.comment', 'cases.register'] },
 ];
 
 const groups = [
   { key: 'general', label: 'General', icon: 'settings' },
   { key: 'case_rules', label: 'Case Rules', icon: 'gavel' },
+  { key: 'auto_assign', label: 'Auto-Assign', icon: 'assignment_ind' },
   { key: 'messaging', label: 'Messaging', icon: 'sms' },
   { key: 'security', label: 'Security', icon: 'shield' },
   { key: 'permissions', label: 'Permissions', icon: 'admin_panel_settings' },
   { key: 'users', label: 'Users & Tracking', icon: 'group' },
 ];
 
+const DEPARTMENTS = ['Water Works', 'Sanitation', 'Electrical', 'Public Works', 'Sewerage', 'Revenue', 'Welfare', 'Administration'];
+
 export function SettingsPage() {
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('settings.edit');
   const [activeGroup, setActiveGroup] = useState('general');
   const filtered = SETTINGS.filter((s) => s.group === activeGroup);
+
+  const [tenantSettings, setTenantSettings] = useState(() => getSettings());
+  const [newRuleDept, setNewRuleDept] = useState('');
+  const [newRuleAssignee, setNewRuleAssignee] = useState('');
+
+  function toggleAutoAssign() {
+    const updated = { ...tenantSettings, autoAssignEnabled: !tenantSettings.autoAssignEnabled };
+    setTenantSettings(updated);
+    saveSettings(updated);
+  }
+
+  function addAutoAssignRule() {
+    if (!newRuleDept || !newRuleAssignee) return;
+    const rules = [...tenantSettings.autoAssignRules, { department: newRuleDept, assignee: newRuleAssignee }];
+    const updated = { ...tenantSettings, autoAssignRules: rules };
+    setTenantSettings(updated);
+    saveSettings(updated);
+    setNewRuleDept('');
+    setNewRuleAssignee('');
+  }
+
+  function removeAutoAssignRule(idx: number) {
+    const rules = tenantSettings.autoAssignRules.filter((_, i) => i !== idx);
+    const updated = { ...tenantSettings, autoAssignRules: rules };
+    setTenantSettings(updated);
+    saveSettings(updated);
+  }
 
   return (
     <div className="space-y-4">
@@ -117,6 +185,123 @@ export function SettingsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Auto-Assign */}
+          {activeGroup === 'auto_assign' && (
+            <div className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-extrabold text-dark">Auto-Assign Cases</h4>
+                  <p className="text-xs text-dark-muted mt-0.5">
+                    Automatically assign new cases to staff based on department
+                  </p>
+                </div>
+                <button
+                  onClick={toggleAutoAssign}
+                  disabled={!canEdit}
+                  className="relative w-14 h-8 rounded-full transition-colors disabled:opacity-50"
+                  style={{ background: tenantSettings.autoAssignEnabled ? '#2F7D4F' : '#E3D6C6' }}
+                >
+                  <span
+                    className="absolute top-1 w-6 h-6 rounded-full bg-white transition-transform"
+                    style={{ left: tenantSettings.autoAssignEnabled ? 30 : 4 }}
+                  />
+                </button>
+              </div>
+
+              {tenantSettings.autoAssignEnabled && (
+                <>
+                  <div className="rounded-xl bg-cream p-4">
+                    <div className="flex items-start gap-2 text-sm">
+                      <span className="material-symbols-rounded text-lg text-info mt-0.5">info</span>
+                      <p className="text-dark-secondary">
+                        When enabled, new cases are automatically assigned to the configured staff member for each department. Cases without a matching rule remain unassigned.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-extrabold text-dark mb-3">Assignment Rules</h4>
+                    {tenantSettings.autoAssignRules.length > 0 ? (
+                      <div className="rounded-xl border border-cream-darker overflow-hidden mb-4">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-cream">
+                              <th className="text-left px-4 py-2.5 font-bold text-dark-muted">Department</th>
+                              <th className="text-left px-4 py-2.5 font-bold text-dark-muted">Default Assignee</th>
+                              <th className="text-right px-4 py-2.5 font-bold text-dark-muted">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-cream">
+                            {tenantSettings.autoAssignRules.map((rule, idx) => (
+                              <tr key={idx}>
+                                <td className="px-4 py-3 font-bold text-dark">{rule.department}</td>
+                                <td className="px-4 py-3 text-dark-secondary">{rule.assignee}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <button
+                                    onClick={() => removeAutoAssignRule(idx)}
+                                    disabled={!canEdit}
+                                    className="text-danger hover:underline text-xs font-bold disabled:opacity-50"
+                                  >
+                                    Remove
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl bg-cream p-6 text-center text-sm text-dark-muted mb-4">
+                        No rules configured. Add a rule below.
+                      </div>
+                    )}
+
+                    {canEdit && (
+                      <div className="flex gap-3 items-end">
+                        <div className="flex-1">
+                          <label className="block text-xs font-bold text-dark-muted mb-1">Department</label>
+                          <select
+                            value={newRuleDept}
+                            onChange={e => setNewRuleDept(e.target.value)}
+                            className="w-full h-10 rounded-xl border-2 border-cream-darker bg-cream px-3 text-sm outline-none focus:border-primary"
+                          >
+                            <option value="">Select...</option>
+                            {DEPARTMENTS.filter(d => !tenantSettings.autoAssignRules.some(r => r.department === d)).map(d => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-xs font-bold text-dark-muted mb-1">Assignee</label>
+                          <select
+                            value={newRuleAssignee}
+                            onChange={e => setNewRuleAssignee(e.target.value)}
+                            className="w-full h-10 rounded-xl border-2 border-cream-darker bg-cream px-3 text-sm outline-none focus:border-primary"
+                          >
+                            <option value="">Select...</option>
+                            {staffMembers
+                              .filter(s => !newRuleDept || s.department === newRuleDept || true)
+                              .map(s => (
+                                <option key={s.id} value={s.name}>{s.name} ({s.department})</option>
+                              ))}
+                          </select>
+                        </div>
+                        <button
+                          onClick={addAutoAssignRule}
+                          disabled={!newRuleDept || !newRuleAssignee}
+                          className="h-10 px-4 rounded-xl bg-primary text-white text-sm font-bold flex items-center gap-1 disabled:opacity-40"
+                        >
+                          <span className="material-symbols-rounded text-lg">add</span>
+                          Add
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
