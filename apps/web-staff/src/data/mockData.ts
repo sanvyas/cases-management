@@ -3,6 +3,7 @@ import type {
   TimelineEntry,
   DashboardKPI,
   DepartmentSummary,
+  StaffMember,
 } from '../types';
 
 export const STATUS_CONFIG: Record<string, { label: string; bg: string; fg: string; icon: string }> = {
@@ -379,6 +380,17 @@ export const dashboardKPIs: DashboardKPI[] = [
   { label: 'Resolved Today', value: 45, change: '+12', trend: 'up', icon: 'task_alt', bg: '#E6F5EC', fg: '#2F7D4F' },
   { label: 'Avg Resolution', value: '3.2d', icon: 'schedule', bg: '#FFF4D6', fg: '#8A5A00' },
   { label: 'Satisfaction', value: '87%', change: '+2%', trend: 'up', icon: 'sentiment_satisfied', bg: '#E6F5EC', fg: '#2F7D4F' },
+];
+
+export const staffMembers: StaffMember[] = [
+  { id: 's001', name: 'JE Ramesh Sharma', designation: 'Junior Engineer', department: 'Water Works' },
+  { id: 's002', name: 'Sanitary Inspector Priya Patel', designation: 'Sanitary Inspector', department: 'Sanitation' },
+  { id: 's003', name: 'AE Vikram Singh', designation: 'Assistant Engineer', department: 'Electrical' },
+  { id: 's004', name: 'JE Deepak Tiwari', designation: 'Junior Engineer', department: 'Public Works' },
+  { id: 's005', name: 'JE Suresh Yadav', designation: 'Junior Engineer', department: 'Sewerage' },
+  { id: 's006', name: 'SE Arun Mehta', designation: 'Superintendent Engineer', department: 'Water Works' },
+  { id: 's007', name: 'JE Manoj Pandey', designation: 'Junior Engineer', department: 'Public Works' },
+  { id: 's008', name: 'Sanitary Inspector Meena Kumari', designation: 'Sanitary Inspector', department: 'Sanitation' },
 ];
 
 export const departmentSummaries: DepartmentSummary[] = [

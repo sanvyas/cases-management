@@ -5,48 +5,35 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import type { User, StaffRole } from './types';
+import type { User } from './types';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  login: (phone: string, otp: string, role: StaffRole) => boolean;
+  login: (phone: string, otp: string) => boolean;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const MOCK_USERS: Record<StaffRole, User> = {
-  officer: {
-    id: 'usr-001',
-    name: 'Aarav Mehta',
-    phone: '9876543210',
-    role: 'officer',
-    roleLabel: 'Supervising Officer',
-    tenantId: 'tenant-nagar-palika',
-    tenantName: 'Nagar Palika Parishad, Ayodhya',
-    permissions: ['dashboard.view', 'cases.view', 'cases.manage', 'cases.approve', 'settings.view', 'settings.edit'],
-  },
-  field_worker: {
-    id: 'usr-002',
-    name: 'Ramesh Sharma',
-    phone: '9876543211',
-    role: 'field_worker',
-    roleLabel: 'Field Worker',
-    tenantId: 'tenant-nagar-palika',
-    tenantName: 'Nagar Palika Parishad, Ayodhya',
-    permissions: ['cases.view', 'cases.accept', 'cases.work', 'cases.atr'],
-  },
+const MOCK_USER: User = {
+  id: 'usr-001',
+  name: 'Aarav Mehta',
+  phone: '9876543210',
+  roleLabel: 'Supervising Officer',
+  tenantId: 'tenant-nagar-palika',
+  tenantName: 'Nagar Palika Parishad, Ayodhya',
+  permissions: ['dashboard.view', 'cases.view', 'cases.manage', 'cases.assign', 'cases.approve', 'cases.comment', 'settings.view', 'settings.edit', 'users.view', 'users.manage'],
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
-  const login = useCallback((phone: string, otp: string, role: StaffRole): boolean => {
+  const login = useCallback((phone: string, otp: string): boolean => {
     if (otp === '1234' && phone.length >= 10) {
       setIsAuthenticated(true);
-      setUser(MOCK_USERS[role]);
+      setUser(MOCK_USER);
       return true;
     }
     return false;

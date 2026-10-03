@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { useParams, Link } from '@tanstack/react-router';
-import { mockCases, mockTimeline, STATUS_CONFIG, PRIORITY_CONFIG } from '../data/mockData';
+import { mockCases, mockTimeline, STATUS_CONFIG, PRIORITY_CONFIG, staffMembers } from '../data/mockData';
+import type { CaseStatus } from '../types';
+
+interface Comment {
+  id: string;
+  text: string;
+  author: string;
+  timestamp: string;
+}
 
 export function CaseDetailPage() {
   const { caseId } = useParams({ strict: false }) as { caseId: string };
@@ -8,7 +16,13 @@ export function CaseDetailPage() {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showReassignModal, setShowReassignModal] = useState(false);
   const [actionDone, setActionDone] = useState('');
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [selectedStaff, setSelectedStaff] = useState('');
+  const [returnReason, setReturnReason] = useState('');
 
   if (!caseData) {
     return (
@@ -24,24 +38,67 @@ export function CaseDetailPage() {
   const timeline = caseData.id === 'c001' ? mockTimeline : [];
   const st = STATUS_CONFIG[caseData.status];
   const pr = PRIORITY_CONFIG[caseData.priority];
+  const isUnassigned = !caseData.assignee || caseData.status === 'REGISTERED';
   const isAtr = caseData.status === 'ATR_SUBMITTED';
   const isOverdue = caseData.status === 'OVERDUE';
 
   function handleApprove() {
-    setCaseData((prev) => prev ? { ...prev, status: 'RESOLVED' as const } : prev);
+    setCaseData((prev) => prev ? { ...prev, status: 'RESOLVED' as CaseStatus } : prev);
     setShowApproveModal(false);
     setActionDone('approved');
   }
 
   function handleReturn() {
-    setCaseData((prev) => prev ? { ...prev, status: 'IN_PROGRESS' as const } : prev);
+    setCaseData((prev) => prev ? { ...prev, status: 'IN_PROGRESS' as CaseStatus } : prev);
     setShowReturnModal(false);
+    setReturnReason('');
     setActionDone('returned');
   }
 
   function handleExtend() {
     setShowExtendModal(false);
     setActionDone('extended');
+  }
+
+  function handleAssign() {
+    const staff = staffMembers.find(s => s.id === selectedStaff);
+    if (staff) {
+      setCaseData((prev) => prev ? {
+        ...prev,
+        assignee: staff.name,
+        assigneeDesignation: staff.designation,
+        status: 'ASSIGNED' as CaseStatus,
+      } : prev);
+    }
+    setShowAssignModal(false);
+    setSelectedStaff('');
+    setActionDone('assigned');
+  }
+
+  function handleReassign() {
+    const staff = staffMembers.find(s => s.id === selectedStaff);
+    if (staff) {
+      setCaseData((prev) => prev ? {
+        ...prev,
+        assignee: staff.name,
+        assigneeDesignation: staff.designation,
+      } : prev);
+    }
+    setShowReassignModal(false);
+    setSelectedStaff('');
+    setActionDone('reassigned');
+  }
+
+  function handleAddComment() {
+    if (!commentText.trim()) return;
+    const newComment: Comment = {
+      id: `cmt-${Date.now()}`,
+      text: commentText.trim(),
+      author: 'Aarav Mehta',
+      timestamp: new Date().toISOString(),
+    };
+    setComments(prev => [newComment, ...prev]);
+    setCommentText('');
   }
 
   return (
@@ -51,16 +108,27 @@ export function CaseDetailPage() {
         <div
           className="flex items-center gap-3 rounded-2xl p-4"
           style={{
-            background: actionDone === 'approved' ? '#E6F5EC' : actionDone === 'returned' ? '#FFF4D6' : '#E0F0FF',
-            color: actionDone === 'approved' ? '#2F7D4F' : actionDone === 'returned' ? '#8A5A00' : '#2F6690',
+            background: actionDone === 'approved' ? '#E6F5EC'
+              : actionDone === 'returned' ? '#FFF4D6'
+              : actionDone === 'assigned' || actionDone === 'reassigned' ? '#E0F0FF'
+              : '#E0F0FF',
+            color: actionDone === 'approved' ? '#2F7D4F'
+              : actionDone === 'returned' ? '#8A5A00'
+              : '#2F6690',
           }}
         >
           <span className="material-symbols-rounded text-2xl">
-            {actionDone === 'approved' ? 'task_alt' : actionDone === 'returned' ? 'restart_alt' : 'schedule'}
+            {actionDone === 'approved' ? 'task_alt'
+              : actionDone === 'returned' ? 'restart_alt'
+              : actionDone === 'assigned' ? 'person_add'
+              : actionDone === 'reassigned' ? 'swap_horiz'
+              : 'schedule'}
           </span>
           <span className="text-sm font-bold">
             {actionDone === 'approved' && 'ATR approved. Case marked as Resolved.'}
-            {actionDone === 'returned' && 'Case returned for rework. Worker has been notified.'}
+            {actionDone === 'returned' && 'Case returned for rework. Assignee notified.'}
+            {actionDone === 'assigned' && `Case assigned to ${caseData.assignee}.`}
+            {actionDone === 'reassigned' && `Case reassigned to ${caseData.assignee}.`}
             {actionDone === 'extended' && 'SLA extended by 48 hours.'}
           </span>
         </div>
@@ -98,44 +166,100 @@ export function CaseDetailPage() {
         </div>
       </div>
 
-      {/* Action Buttons for Officer */}
-      {(isAtr || isOverdue) && !actionDone && (
-        <div className="flex gap-3 flex-wrap">
-          {isAtr && (
-            <>
-              <button
-                onClick={() => setShowApproveModal(true)}
-                className="flex items-center gap-2 h-12 px-6 rounded-xl bg-success text-white font-bold text-sm"
-              >
-                <span className="material-symbols-rounded text-xl">check_circle</span>
-                Approve ATR
-              </button>
-              <button
-                onClick={() => setShowReturnModal(true)}
-                className="flex items-center gap-2 h-12 px-6 rounded-xl bg-warning text-white font-bold text-sm"
-              >
-                <span className="material-symbols-rounded text-xl">restart_alt</span>
-                Return for Rework
-              </button>
-            </>
-          )}
-          {isOverdue && (
+      {/* Action Buttons */}
+      <div className="flex gap-3 flex-wrap">
+        {isUnassigned && (
+          <button
+            onClick={() => setShowAssignModal(true)}
+            className="flex items-center gap-2 h-12 px-6 rounded-xl bg-primary text-white font-bold text-sm"
+          >
+            <span className="material-symbols-rounded text-xl">person_add</span>
+            Assign Case
+          </button>
+        )}
+        {!isUnassigned && !isAtr && caseData.status !== 'RESOLVED' && caseData.status !== 'CLOSED' && (
+          <button
+            onClick={() => setShowReassignModal(true)}
+            className="flex items-center gap-2 h-12 px-6 rounded-xl border-2 border-cream-darker bg-white text-dark font-bold text-sm"
+          >
+            <span className="material-symbols-rounded text-xl">swap_horiz</span>
+            Change Assignee
+          </button>
+        )}
+        {isAtr && !actionDone && (
+          <>
             <button
-              onClick={() => setShowExtendModal(true)}
-              className="flex items-center gap-2 h-12 px-6 rounded-xl bg-info text-white font-bold text-sm"
+              onClick={() => setShowApproveModal(true)}
+              className="flex items-center gap-2 h-12 px-6 rounded-xl bg-success text-white font-bold text-sm"
             >
-              <span className="material-symbols-rounded text-xl">more_time</span>
-              Extend SLA
+              <span className="material-symbols-rounded text-xl">check_circle</span>
+              Approve ATR
             </button>
-          )}
-        </div>
-      )}
+            <button
+              onClick={() => setShowReturnModal(true)}
+              className="flex items-center gap-2 h-12 px-6 rounded-xl bg-warning text-white font-bold text-sm"
+            >
+              <span className="material-symbols-rounded text-xl">restart_alt</span>
+              Return for Rework
+            </button>
+          </>
+        )}
+        {isOverdue && !actionDone && (
+          <button
+            onClick={() => setShowExtendModal(true)}
+            className="flex items-center gap-2 h-12 px-6 rounded-xl bg-info text-white font-bold text-sm"
+          >
+            <span className="material-symbols-rounded text-xl">more_time</span>
+            Extend SLA
+          </button>
+        )}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Info */}
         <div className="space-y-5 lg:col-span-2">
           <Card title="Description" icon="description">
             <p className="text-sm text-dark-secondary leading-relaxed">{caseData.description}</p>
+          </Card>
+
+          {/* Comments Section */}
+          <Card title="Comments" icon="chat">
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(); }}
+                placeholder="Add a comment..."
+                className="flex-1 rounded-xl border-2 border-cream-darker bg-cream px-4 py-2.5 text-sm outline-none focus:border-primary"
+              />
+              <button
+                onClick={handleAddComment}
+                disabled={!commentText.trim()}
+                className="h-11 px-4 rounded-xl bg-primary text-white font-bold text-sm flex items-center gap-1 disabled:opacity-40"
+              >
+                <span className="material-symbols-rounded text-lg">send</span>
+                Post
+              </button>
+            </div>
+            {comments.length > 0 ? (
+              <div className="space-y-3">
+                {comments.map((c) => (
+                  <div key={c.id} className="rounded-xl bg-cream p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+                        {c.author.split(' ').map(n => n[0]).join('')}
+                      </span>
+                      <span className="text-sm font-bold text-dark">{c.author}</span>
+                      <span className="text-xs text-dark-muted">{new Date(c.timestamp).toLocaleString('en-IN')}</span>
+                    </div>
+                    <p className="text-sm text-dark-secondary pl-8">{c.text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-dark-muted">No comments yet. Add a comment above.</p>
+            )}
           </Card>
 
           {/* Timeline */}
@@ -175,7 +299,7 @@ export function CaseDetailPage() {
                       <span className="material-symbols-rounded text-3xl text-dark-muted">image</span>
                     </div>
                     <div className="px-2 py-1 bg-white/80 text-xs text-dark-muted">
-                      Photo {n} · GPS ✓
+                      Photo {n} · GPS verified
                     </div>
                   </div>
                 ))}
@@ -212,9 +336,125 @@ export function CaseDetailPage() {
               <Detail label="Designation" value={caseData.assigneeDesignation || '—'} icon="work" />
               <Detail label="Department" value={caseData.department} icon="apartment" />
             </dl>
+            {caseData.assignee && caseData.status !== 'RESOLVED' && caseData.status !== 'CLOSED' && (
+              <button
+                onClick={() => setShowReassignModal(true)}
+                className="mt-3 flex items-center gap-1 text-sm font-bold text-primary hover:underline"
+              >
+                <span className="material-symbols-rounded text-lg">swap_horiz</span>
+                Change Assignee
+              </button>
+            )}
           </Card>
         </div>
       </div>
+
+      {/* Assign Modal */}
+      {showAssignModal && (
+        <Modal onClose={() => setShowAssignModal(false)}>
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="material-symbols-rounded text-2xl text-primary">person_add</span>
+              <h3 className="text-xl font-extrabold text-dark">Assign Case</h3>
+            </div>
+            <p className="text-sm text-dark-muted mb-3">Select staff member to assign this case to:</p>
+            <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
+              {staffMembers.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedStaff(s.id)}
+                  className="w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all"
+                  style={{
+                    background: selectedStaff === s.id ? '#FDF0EA' : '#FAF5EE',
+                    border: `2px solid ${selectedStaff === s.id ? '#C24E33' : 'transparent'}`,
+                  }}
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-cream-dark text-sm font-bold text-dark">
+                    {s.name.split(' ').slice(-2).map(n => n[0]).join('')}
+                  </span>
+                  <div>
+                    <div className="text-sm font-bold text-dark">{s.name}</div>
+                    <div className="text-xs text-dark-muted">{s.designation} · {s.department}</div>
+                  </div>
+                  {selectedStaff === s.id && (
+                    <span className="material-symbols-rounded text-xl text-primary ml-auto">check_circle</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowAssignModal(false); setSelectedStaff(''); }}
+                className="flex-1 h-12 rounded-xl border-2 border-cream-darker bg-white text-dark font-bold text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssign}
+                disabled={!selectedStaff}
+                className="flex-1 h-12 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-40"
+              >
+                Assign
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Reassign Modal */}
+      {showReassignModal && (
+        <Modal onClose={() => setShowReassignModal(false)}>
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="material-symbols-rounded text-2xl text-primary">swap_horiz</span>
+              <h3 className="text-xl font-extrabold text-dark">Change Assignee</h3>
+            </div>
+            <div className="rounded-xl bg-cream p-3 mb-3 text-sm">
+              <span className="font-bold">Current: </span>{caseData.assignee} ({caseData.assigneeDesignation})
+            </div>
+            <p className="text-sm text-dark-muted mb-3">Select new assignee:</p>
+            <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
+              {staffMembers.filter(s => s.name !== caseData.assignee).map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedStaff(s.id)}
+                  className="w-full flex items-center gap-3 rounded-xl p-3 text-left transition-all"
+                  style={{
+                    background: selectedStaff === s.id ? '#FDF0EA' : '#FAF5EE',
+                    border: `2px solid ${selectedStaff === s.id ? '#C24E33' : 'transparent'}`,
+                  }}
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-cream-dark text-sm font-bold text-dark">
+                    {s.name.split(' ').slice(-2).map(n => n[0]).join('')}
+                  </span>
+                  <div>
+                    <div className="text-sm font-bold text-dark">{s.name}</div>
+                    <div className="text-xs text-dark-muted">{s.designation} · {s.department}</div>
+                  </div>
+                  {selectedStaff === s.id && (
+                    <span className="material-symbols-rounded text-xl text-primary ml-auto">check_circle</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowReassignModal(false); setSelectedStaff(''); }}
+                className="flex-1 h-12 rounded-xl border-2 border-cream-darker bg-white text-dark font-bold text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReassign}
+                disabled={!selectedStaff}
+                className="flex-1 h-12 rounded-xl bg-primary text-white font-bold text-sm disabled:opacity-40"
+              >
+                Reassign
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Approve Modal */}
       {showApproveModal && (
@@ -252,12 +492,14 @@ export function CaseDetailPage() {
             <label className="block text-sm font-bold text-dark mb-1">Reason</label>
             <textarea
               rows={3}
+              value={returnReason}
+              onChange={(e) => setReturnReason(e.target.value)}
               placeholder="Explain what needs to be redone..."
               className="w-full rounded-xl border-2 border-cream-darker bg-cream px-4 py-3 text-sm outline-none focus:border-primary resize-none"
             />
             <div className="flex gap-3 mt-4">
               <button
-                onClick={() => setShowReturnModal(false)}
+                onClick={() => { setShowReturnModal(false); setReturnReason(''); }}
                 className="flex-1 h-12 rounded-xl border-2 border-cream-darker bg-white text-dark font-bold text-sm"
               >
                 Cancel

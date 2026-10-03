@@ -15,8 +15,6 @@ import { CasesPage } from './pages/CasesPage';
 import { CaseDetailPage } from './pages/CaseDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
-import { MyTasksPage } from './pages/MyTasksPage';
-import { TaskDetailPage } from './pages/TaskDetailPage';
 import './index.css';
 
 function OfficerLayout() {
@@ -94,39 +92,6 @@ function OfficerLayout() {
   );
 }
 
-function FieldWorkerLayout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  function handleLogout() {
-    logout();
-    void navigate({ to: '/login' });
-  }
-
-  return (
-    <div className="flex min-h-dvh flex-col bg-cream" style={{ fontFamily: "'Mukta', sans-serif" }}>
-      <header className="flex items-center gap-3 px-4 pt-3 pb-2 bg-white border-b border-cream-darker">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
-          {user?.name.split(' ').map((n) => n[0]).join('')}
-        </span>
-        <div className="flex-1 min-w-0">
-          <div className="text-lg font-extrabold leading-tight text-dark">{user?.name}</div>
-          <div className="text-xs text-dark-muted">{user?.roleLabel} · {user?.tenantName}</div>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-dark-muted hover:bg-cream-dark"
-        >
-          <span className="material-symbols-rounded text-2xl">logout</span>
-        </button>
-      </header>
-      <main className="flex-1 overflow-y-auto">
-        <Outlet />
-      </main>
-    </div>
-  );
-}
-
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
 });
@@ -141,12 +106,6 @@ const officerLayout = createRoute({
   getParentRoute: () => rootRoute,
   id: 'officer',
   component: OfficerLayout,
-});
-
-const fieldLayout = createRoute({
-  getParentRoute: () => rootRoute,
-  id: 'field',
-  component: FieldWorkerLayout,
 });
 
 const dashboardRoute = createRoute({
@@ -173,22 +132,9 @@ const settingsRoute = createRoute({
   component: SettingsPage,
 });
 
-const myTasksRoute = createRoute({
-  getParentRoute: () => fieldLayout,
-  path: '/tasks',
-  component: MyTasksPage,
-});
-
-const taskDetailRoute = createRoute({
-  getParentRoute: () => fieldLayout,
-  path: '/tasks/$taskId',
-  component: TaskDetailPage,
-});
-
 const routeTree = rootRoute.addChildren([
   loginRoute,
   officerLayout.addChildren([dashboardRoute, casesRoute, caseDetailRoute, settingsRoute]),
-  fieldLayout.addChildren([myTasksRoute, taskDetailRoute]),
 ]);
 
 const router = createRouter({ routeTree, basepath: import.meta.env.BASE_URL });

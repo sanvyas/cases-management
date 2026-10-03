@@ -10,7 +10,7 @@ function speak(text: string) {
     u.rate = 0.92;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
-  } catch (_) { /* noop */ }
+  } catch { /* noop */ }
 }
 
 export function DetailPage() {

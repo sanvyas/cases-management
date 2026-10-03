@@ -1,9 +1,6 @@
-export type StaffRole = 'officer' | 'field_worker';
-
 export type CaseStatus =
   | 'REGISTERED'
   | 'ASSIGNED'
-  | 'ACCEPTED'
   | 'IN_PROGRESS'
   | 'ATR_SUBMITTED'
   | 'RESOLVED'
@@ -74,9 +71,15 @@ export interface User {
   id: string;
   name: string;
   phone: string;
-  role: StaffRole;
   roleLabel: string;
   tenantId: string;
   tenantName: string;
   permissions: string[];
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  designation: string;
+  department: string;
 }
