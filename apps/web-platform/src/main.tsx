@@ -6,8 +6,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { EnvironmentPage } from './pages/EnvironmentPage';
 import { NewEnvironmentPage } from './pages/NewEnvironmentPage';
 import { AuditLogPage } from './pages/AuditLogPage';
-import { TENANTS } from './data/mockData';
-import { seedDefaultConfig } from './platformConfig';
+import { seedDefaultConfig, getAllTenants, addTenant, addAuditEntry } from './platformConfig';
 import './index.css';
 
 seedDefaultConfig();
@@ -22,6 +21,9 @@ function PlatformLayout() {
   const { user, logout } = useAuth();
   const [view, setView] = useState<View>({ page: 'dashboard' });
   const [configOpen, setConfigOpen] = useState(true);
+  const [tenants, setTenants] = useState(() => getAllTenants());
+
+  const refreshTenants = useCallback(() => setTenants(getAllTenants()), []);
 
   const goToDashboard = useCallback(() => setView({ page: 'dashboard' }), []);
   const goToEnvironment = useCallback((envId: string) => {
@@ -72,7 +74,7 @@ function PlatformLayout() {
 
           {configOpen && (
             <div className="ml-3 space-y-0.5 border-l-2 border-white/10 pl-3">
-              {TENANTS.map(t => {
+              {tenants.map(t => {
                 const isActive = view.page === 'environment' && view.envId === t.id;
                 const statusDot = t.status === 'active' ? '#2F7D4F' : t.status === 'trial' ? '#2F6690' : t.status === 'suspended' ? '#B91C1C' : '#8A7766';
                 return (
@@ -153,17 +155,31 @@ function PlatformLayout() {
         </header>
         <main className="flex-1 overflow-y-auto p-6">
           {view.page === 'dashboard' && (
-            <DashboardPage onNavigate={goToEnvironment} />
+            <DashboardPage tenants={tenants} onNavigate={goToEnvironment} />
           )}
           {view.page === 'environment' && (
-            <EnvironmentPage envId={view.envId} onBack={goToDashboard} />
+            <EnvironmentPage envId={view.envId} onBack={goToDashboard} onTenantsChanged={refreshTenants} />
           )}
           {view.page === 'new-environment' && (
             <NewEnvironmentPage
               onBack={goToDashboard}
-              onCreate={(name, type, planId) => {
-                void name; void type; void planId;
-                goToDashboard();
+              onCreate={(name, bodyType, planId, extra) => {
+                const tenant = addTenant({ name, bodyType, planId, ...extra });
+                if (user) {
+                  addAuditEntry({
+                    userId: user.id,
+                    userName: user.name,
+                    tenantId: tenant.id,
+                    tenantName: tenant.name,
+                    action: 'deploy',
+                    section: 'Environment',
+                    field: 'Created',
+                    oldValue: '',
+                    newValue: `${tenant.name} (${tenant.type}, ${tenant.planName})`,
+                  });
+                }
+                refreshTenants();
+                goToEnvironment(tenant.id);
               }}
             />
           )}

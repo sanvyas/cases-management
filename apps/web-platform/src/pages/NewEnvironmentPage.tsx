@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { PLANS } from '../data/mockData';
 
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Delhi', 'Jammu & Kashmir', 'Ladakh', 'Chandigarh', 'Puducherry',
+];
+
 interface Props {
   onBack: () => void;
-  onCreate: (name: string, type: string, planId: string) => void;
+  onCreate: (name: string, type: string, planId: string, extra: { state: string; contactName: string; contactEmail: string }) => void;
 }
 
 const BODY_TYPES = [
@@ -28,7 +37,7 @@ export function NewEnvironmentPage({ onBack, onCreate }: Props) {
 
   function handleCreate() {
     if (name && bodyType && selectedPlan) {
-      onCreate(name, bodyType, selectedPlan);
+      onCreate(name, bodyType, selectedPlan, { state, contactName, contactEmail });
     }
   }
 
@@ -105,13 +114,17 @@ export function NewEnvironmentPage({ onBack, onCreate }: Props) {
             </div>
             <div>
               <label className="block text-xs font-bold text-dark-muted mb-1.5">State</label>
-              <input
-                type="text"
+              <select
                 value={state}
                 onChange={e => setState(e.target.value)}
-                className="w-full h-12 rounded-xl border-2 border-cream-darker bg-cream px-4 text-sm font-bold text-dark outline-none focus:border-primary"
-                placeholder="e.g. Uttar Pradesh"
-              />
+                className="w-full h-12 rounded-xl border-2 border-cream-darker bg-cream px-4 text-sm font-bold text-dark outline-none focus:border-primary appearance-none cursor-pointer"
+                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234A3E34' d='M2 4l4 4 4-4'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
+              >
+                <option value="">Select State</option>
+                {INDIAN_STATES.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-dark-muted mb-1.5">Contact Person</label>
@@ -141,8 +154,8 @@ export function NewEnvironmentPage({ onBack, onCreate }: Props) {
                 Back
               </button>
               <button
-                onClick={() => name && setStep(3)}
-                disabled={!name}
+                onClick={() => name && state && setStep(3)}
+                disabled={!name || !state}
                 className="flex h-12 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-bold text-white disabled:opacity-40"
               >
                 Continue

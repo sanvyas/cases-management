@@ -1,18 +1,18 @@
 import { useState, useMemo, useRef } from 'react';
 import {
-  TENANTS,
   getUsageData,
   getCostBreakdown,
   MODULE_LABELS,
   STATUS_STYLES,
 } from '../data/mockData';
-import { deployConfig, getTenantConfig, saveTenantConfig, addAuditEntry, addConfigChangeEntries } from '../platformConfig';
+import { deployConfig, getTenantConfig, saveTenantConfig, addAuditEntry, addConfigChangeEntries, getAllTenants } from '../platformConfig';
 import { useAuth } from '../auth';
 import type { EnvironmentConfig } from '../types';
 
 interface Props {
   envId: string;
   onBack: () => void;
+  onTenantsChanged?: () => void;
 }
 
 const CONFIG_GROUPS = [
@@ -598,7 +598,7 @@ function SectionHeader({ title, icon }: { title: string; icon: string }) {
 
 export function EnvironmentPage({ envId, onBack }: Props) {
   const { user } = useAuth();
-  const tenant = TENANTS.find(t => t.id === envId);
+  const tenant = getAllTenants().find(t => t.id === envId);
   const [activeTab, setActiveTab] = useState('overview');
   const [config, setConfig] = useState<EnvironmentConfig>(
     () => getTenantConfig(envId)

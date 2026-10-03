@@ -1,18 +1,19 @@
 import { useMemo } from 'react';
-import { TENANTS, STATUS_STYLES } from '../data/mockData';
+import { STATUS_STYLES } from '../data/mockData';
+import type { Tenant } from '../types';
 
-export function DashboardPage({ onNavigate }: { onNavigate: (envId: string) => void }) {
+export function DashboardPage({ tenants, onNavigate }: { tenants: Tenant[]; onNavigate: (envId: string) => void }) {
   const stats = useMemo(() => {
-    const active = TENANTS.filter(t => t.status === 'active').length;
-    const trial = TENANTS.filter(t => t.status === 'trial').length;
-    const totalCases = TENANTS.reduce((s, t) => s + t.totalCases, 0);
-    const activeCases = TENANTS.reduce((s, t) => s + t.activeCases, 0);
-    const totalStaff = TENANTS.reduce((s, t) => s + t.staffCount, 0);
-    const totalCitizens = TENANTS.reduce((s, t) => s + t.citizenCount, 0);
-    const monthlyRevenue = TENANTS.reduce((s, t) => s + t.monthlyRevenue, 0);
-    const monthlyCost = TENANTS.reduce((s, t) => s + t.monthlyCost, 0);
+    const active = tenants.filter(t => t.status === 'active').length;
+    const trial = tenants.filter(t => t.status === 'trial').length;
+    const totalCases = tenants.reduce((s, t) => s + t.totalCases, 0);
+    const activeCases = tenants.reduce((s, t) => s + t.activeCases, 0);
+    const totalStaff = tenants.reduce((s, t) => s + t.staffCount, 0);
+    const totalCitizens = tenants.reduce((s, t) => s + t.citizenCount, 0);
+    const monthlyRevenue = tenants.reduce((s, t) => s + t.monthlyRevenue, 0);
+    const monthlyCost = tenants.reduce((s, t) => s + t.monthlyCost, 0);
     return { active, trial, totalCases, activeCases, totalStaff, totalCitizens, monthlyRevenue, monthlyCost };
-  }, []);
+  }, [tenants]);
 
   const kpis = [
     { label: 'Active Tenants', value: stats.active, icon: 'apartment', bg: '#E6F5EC', fg: '#2F7D4F' },
@@ -88,7 +89,7 @@ export function DashboardPage({ onNavigate }: { onNavigate: (envId: string) => v
               </tr>
             </thead>
             <tbody>
-              {TENANTS.map(t => {
+              {tenants.map(t => {
                 const st = STATUS_STYLES[t.status]!;
                 return (
                   <tr key={t.id} className="border-b border-cream hover:bg-cream/50 cursor-pointer" onClick={() => onNavigate(t.id)}>

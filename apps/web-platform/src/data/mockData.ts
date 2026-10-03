@@ -397,9 +397,10 @@ export function getUsageData(tenantId: string): UsageMetric[] {
   return days;
 }
 
-export function getCostBreakdown(tenantId: string): CostBreakdown[] {
+export function getCostBreakdown(tenantId: string, tenantCost?: number): CostBreakdown[] {
   const t = TENANTS.find(x => x.id === tenantId);
-  const scale = t ? t.monthlyCost / 28400 : 1;
+  const cost = tenantCost ?? (t ? t.monthlyCost : 28400);
+  const scale = cost / 28400;
   return [
     { category: 'Infrastructure', item: 'EC2 Compute', amount: Math.round(8200 * scale), unit: '/month' },
     { category: 'Infrastructure', item: 'RDS PostgreSQL', amount: Math.round(6800 * scale), unit: '/month' },
