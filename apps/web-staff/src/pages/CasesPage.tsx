@@ -15,7 +15,7 @@ const tabs: { key: Tab; label: string; icon: string }[] = [
 
 const statusFilters: Record<Tab, (s: CaseStatus) => boolean> = {
   all: (s) => !['CLOSED'].includes(s),
-  assigned: (s) => s === 'ASSIGNED' || s === 'ACCEPTED',
+  assigned: (s) => s === 'ASSIGNED',
   overdue: (s) => s === 'OVERDUE',
   atr: (s) => s === 'ATR_SUBMITTED',
   resolved: (s) => s === 'RESOLVED',

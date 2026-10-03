@@ -9,7 +9,6 @@ import type {
 export const STATUS_CONFIG: Record<string, { label: string; bg: string; fg: string; icon: string }> = {
   REGISTERED: { label: 'Registered', bg: '#E9E3DB', fg: '#4A3E34', icon: 'receipt_long' },
   ASSIGNED: { label: 'Assigned', bg: '#E0F0FF', fg: '#2F6690', icon: 'person_add' },
-  ACCEPTED: { label: 'Accepted', bg: '#E0F0FF', fg: '#1A5276', icon: 'check_circle' },
   IN_PROGRESS: { label: 'In Progress', bg: '#FFF4D6', fg: '#8A5A00', icon: 'engineering' },
   ATR_SUBMITTED: { label: 'ATR Submitted', bg: '#F3E8FF', fg: '#6B21A8', icon: 'description' },
   RESOLVED: { label: 'Resolved', bg: '#E6F5EC', fg: '#2F7D4F', icon: 'task_alt' },
@@ -104,7 +103,7 @@ export const mockCases: Case[] = [
     complaintType: 'Roads',
     subType: 'Pothole',
     department: 'Public Works',
-    status: 'ACCEPTED',
+    status: 'ASSIGNED',
     priority: 'CRITICAL',
     location: 'NH-48, Near Toll Plaza',
     zone: 'Zone 3',
